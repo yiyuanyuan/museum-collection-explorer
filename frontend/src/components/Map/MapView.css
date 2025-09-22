@@ -1,0 +1,340 @@
+/* Import marker cluster styles */
+@import '~leaflet.markercluster/dist/MarkerCluster.css';
+@import '~leaflet.markercluster/dist/MarkerCluster.Default.css';
+
+/* Container structure matching chatbot */
+.map-view-container {
+  height: 710px; /* Same height as chatbot */
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* Fullscreen mode */
+.map-view-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  z-index: 9999;
+  border: none;
+}
+
+.map-view-container.fullscreen .map-content {
+  height: 100%;
+  flex: 1;
+}
+
+/* Header matching chatbot style */
+.map-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  flex-shrink: 0;
+  height: 65px; /* Match chatbot header height */
+}
+
+.header-content {
+  flex: 1;
+}
+
+.map-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0 0 0.25rem 0;
+}
+
+.map-subtitle {
+  font-size: 0.75rem;
+  color: #666;
+  margin: 0;
+}
+
+.fullscreen-btn {
+  padding: 0.375rem 0.5rem;
+  background: transparent;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.125rem;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.fullscreen-btn:hover {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
+/* Filters section */
+.map-filters {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+/* Override FilterPanel styles to fit inline */
+.map-filters .filter-panel {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.map-filters .filter-header {
+  display: none; /* Hide the filter header since we have the map header */
+}
+
+.map-filters .filter-content {
+  padding: 0;
+}
+
+/* Map content area */
+.map-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #f0f0f0;
+  min-height: 300px; /* Ensure minimum height for map */
+}
+
+.leaflet-map {
+  height: 100%;
+  width: 100%;
+}
+
+/* Footer with data info */
+.map-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafafa;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.data-source {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.source-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.source-name {
+  color: #333;
+}
+
+.data-stats {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  color: #666;
+}
+
+.data-stats strong {
+  color: #333;
+  font-weight: 600;
+}
+
+.stats-loading {
+  color: #999;
+  font-style: italic;
+}
+
+.stats-limit {
+  color: #999;
+  font-size: 0.6875rem;
+}
+
+.stats-empty {
+  color: #999;
+  font-style: italic;
+}
+
+/* Loading Overlay - Only for initial load */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loading-overlay .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-overlay p {
+  margin-top: 1rem;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+/* Loading Indicator - Subtle, for subsequent loads */
+.loading-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.loading-indicator .loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Custom Cluster Styles (keeping existing) */
+.custom-cluster {
+  background: transparent !important;
+  border: none !important;
+}
+
+.cluster-marker {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  border: 2px solid white;
+  transition: all 0.3s ease;
+}
+
+.cluster-marker:hover {
+  transform: scale(1.1);
+}
+
+.cluster-marker span {
+  display: block;
+  text-align: center;
+}
+
+/* Cluster size colors - density based */
+.cluster-small {
+  background: linear-gradient(135deg, #42a5f5, #1e88e5);
+  font-size: 12px;
+}
+
+.cluster-medium {
+  background: linear-gradient(135deg, #ffa726, #fb8c00);
+  font-size: 13px;
+}
+
+.cluster-large {
+  background: linear-gradient(135deg, #ef5350, #e53935);
+  font-size: 14px;
+}
+
+.cluster-xlarge {
+  background: linear-gradient(135deg, #ab47bc, #8e24aa);
+  font-size: 15px;
+}
+
+/* Override default marker cluster styles */
+.leaflet-cluster-anim .leaflet-marker-icon, 
+.leaflet-cluster-anim .leaflet-marker-shadow {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-in;
+}
+
+.marker-cluster-small {
+  background-color: rgba(66, 165, 245, 0.6);
+}
+
+.marker-cluster-small div {
+  background-color: rgba(66, 165, 245, 0.9);
+}
+
+.marker-cluster-medium {
+  background-color: rgba(255, 167, 38, 0.6);
+}
+
+.marker-cluster-medium div {
+  background-color: rgba(255, 167, 38, 0.9);
+}
+
+.marker-cluster-large {
+  background-color: rgba(239, 83, 80, 0.6);
+}
+
+.marker-cluster-large div {
+  background-color: rgba(239, 83, 80, 0.9);
+}
+
+/* Popup Styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 4px;
+}
+
+.leaflet-popup-content {
+  margin: 8px;
+  max-width: 300px;
+  font-size: 0.8125rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .map-view-container {
+    height: 500px;
+    min-height: 400px;
+  }
+  
+  .map-header {
+    padding: 0.75rem;
+  }
+  
+  .map-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .data-stats {
+    flex-wrap: wrap;
+  }
+}

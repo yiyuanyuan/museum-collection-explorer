@@ -1,0 +1,16 @@
+Step 1: Start the Flask backend
+Open a new terminal window and run: cd Documents/AM-collection-explorer/backend
+
+# Activate the virtual environment
+source venv/bin/activate
+
+# Start the Flask server
+python app.py
+
+Keep this terminal open.
+
+Step 2: Start the React frontend
+Open a second terminal window and run: cd Documents/AM-collection-explorer/frontend
+
+# Start the React development server
+npm start

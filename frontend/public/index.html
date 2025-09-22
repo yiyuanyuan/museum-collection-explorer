@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Explore bird specimens from the Australian Museum collection with interactive maps and AI-powered insights"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bird Explorer">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Australian Museum Bird Explorer">
+    <meta property="og:description" content="Explore bird specimens from the Australian Museum collection">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://birdexplorer.australianmuseum.net.au">
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png">
+    
+    <title>Bird Explorer - Australian Museum</title>
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://biocache-ws.ala.org.au">
+    <link rel="preconnect" href="https://tile.openstreetmap.org">
+    
+    <style>
+      /* Initial loading screen styles */
+      .app-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e0e5eb 0%, #d6dde5 100%);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+      }
+      
+      .app-loading-content {
+        text-align: center;
+      }
+      
+      .app-loading-logo {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        animation: pulse 2s infinite;
+      }
+      
+      .app-loading-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+      }
+      
+      .app-loading-subtext {
+        font-size: 0.875rem;
+        color: #666;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <div id="root">
+      <!-- Loading screen shown before React loads -->
+      <div class="app-loading">
+        <div class="app-loading-content">
+          <div class="app-loading-logo">🦜</div>
+          <div class="app-loading-text">Bird Explorer</div>
+          <div class="app-loading-subtext">Australian Museum</div>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      // Register service worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('%PUBLIC_URL%/service-worker.js')
+            .then(registration => {
+              console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
