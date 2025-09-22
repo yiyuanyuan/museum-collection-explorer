@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://museum-collection-explorer-api.onrender.com/api';
 
 export const fetchOccurrences = async (filters = {}, page = 0, pageSize = 300000) => {
   try {
