@@ -2,23 +2,28 @@ from flask import Flask
 from flask_cors import CORS
 from config import Config
 from api.routes import api_bp
+import os
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
     # Configure CORS - allow all origins for development
-    CORS(app, origins=["http://localhost:3000", "http://localhost:3001"], supports_credentials=True)
+    CORS(app, origins=[
+        "http://localhost:3000", 
+        "https://museum-explorer.vercel.app", 
+        "https://*.vercel.app"
+    ], supports_credentials=True)
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
 
     app.config["PROPAGATE_EXCEPTIONS"] = True
-    app.config["DEBUG"] = True
-
+    app.config["DEBUG"] = False  # Changed from True to False
     
     return app
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
