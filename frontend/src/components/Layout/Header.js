@@ -11,7 +11,7 @@ function Header() {
             <path d="M5 21V7l7-4 7 4v14"></path>
             <path d="M9 21v-6h6v6"></path>
           </svg>
-          <span className="logo-text">COLLECTION EXPLORER</span>
+          <span className="logo-text">COLLECTION EXPLORER (Testing)</span>
         </div>
         <nav className="nav">
           <a href="/" className="nav-link">HOME</a>
