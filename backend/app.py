@@ -11,9 +11,11 @@ def create_app():
     # Configure CORS - allow all origins for development
     CORS(app, origins=[
         "http://localhost:3000", 
-        "https://museum-explorer.vercel.app", 
-        "https://*.vercel.app"
-    ], supports_credentials=True)
+        "https://museum-collection-explorer.vercel.app", 
+        "https://museum-collection-explorer-*.vercel.app"
+    ], supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "OPTIONS"])
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
