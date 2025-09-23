@@ -1,4 +1,4 @@
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, jsonify
 from flask_cors import CORS
 from config import Config
 from api.routes import api_bp
@@ -8,31 +8,37 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    # TEMPORARY: Allow ALL origins to fix CORS issues
-    # Once working, we'll restrict this to specific domains
+    # Configure CORS with explicit POST support
     CORS(app, 
-         resources={r"/*": {"origins": "*"}},
-         allow_headers=["Content-Type", "Authorization", "Accept"],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         supports_credentials=False)  # Set to False when using "*"
+         resources={r"/api/*": {
+             "origins": "*",
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+             "expose_headers": ["Content-Range", "X-Content-Range"],
+             "supports_credentials": False,
+             "max_age": 3600
+         }})
     
-    # Handle preflight OPTIONS requests
+    # Handle preflight requests
     @app.before_request
     def handle_preflight():
         if request.method == "OPTIONS":
             response = make_response()
             response.headers.add("Access-Control-Allow-Origin", "*")
-            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept")
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept,Origin,X-Requested-With")
             response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+            response.headers.add("Access-Control-Max-Age", "3600")
             return response
     
-    # Add CORS headers to every response
+    # Ensure CORS headers on all responses
     @app.after_request
     def after_request(response):
-        origin = request.headers.get('Origin')
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Accept'
-        response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+        if request.method == "OPTIONS":
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,Accept,Origin,X-Requested-With"
+        else:
+            response.headers["Access-Control-Allow-Origin"] = "*"
         return response
     
     # Register blueprints
