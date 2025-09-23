@@ -8,20 +8,8 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    # COMPREHENSIVE CORS Configuration
-    CORS(app, 
-         resources={r"/api/*": {
-             "origins": [
-                 "http://localhost:3000",
-                 "http://localhost:3001",
-                 "https://museum-collection-explorer.vercel.app",
-                 "https://museum-collection-explorer-*.vercel.app"
-             ],
-             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization", "Accept"],
-             "supports_credentials": True,
-             "max_age": 3600
-         }})
+    # TEMPORARY: Allow ALL origins to test
+    CORS(app)  # This allows ALL origins - we'll restrict it later
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
