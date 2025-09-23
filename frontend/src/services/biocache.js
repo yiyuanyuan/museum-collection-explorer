@@ -1,16 +1,18 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://museum-collection-explorer-api.onrender.com/api';
+// Make sure the URL includes /api at the end
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://museum-collection-explorer-api.onrender.com';
 
 export const fetchOccurrences = async (filters = {}, page = 0, pageSize = 300000) => {
   try {
     const params = {
       page,
-      pageSize,  // Now defaults to 300000 to get all records
+      pageSize,
       ...filters
     };
 
-    const response = await axios.get(`${API_BASE_URL}/occurrences`, { params });
+    // Add /api to the endpoint path
+    const response = await axios.get(`${API_BASE_URL}/api/occurrences`, { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching occurrences:', error);
@@ -20,7 +22,8 @@ export const fetchOccurrences = async (filters = {}, page = 0, pageSize = 300000
 
 export const fetchStatistics = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/statistics`);
+    // Add /api to the endpoint path
+    const response = await axios.get(`${API_BASE_URL}/api/statistics`);
     return response.data;
   } catch (error) {
     console.error('Error fetching statistics:', error);
@@ -36,7 +39,8 @@ export const searchByLocation = async (lat, lon, radius = 10) => {
       radius
     };
 
-    const response = await axios.get(`${API_BASE_URL}/occurrences`, { params });
+    // Add /api to the endpoint path
+    const response = await axios.get(`${API_BASE_URL}/api/occurrences`, { params });
     return response.data;
   } catch (error) {
     console.error('Error searching by location:', error);
