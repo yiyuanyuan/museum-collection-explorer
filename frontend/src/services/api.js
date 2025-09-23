@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://museum-collection-explorer-api.onrender.com/api';
+// Remove /api from the base URL - it will be added to each endpoint
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://museum-collection-explorer-api.onrender.com';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -67,7 +68,8 @@ export const sendChatMessage = async (message, context = {}, imageData = null) =
       payload.image = base64Data;
     }
     
-    const response = await api.post('/chat', payload);
+    // Now explicitly include /api in the endpoint
+    const response = await api.post('/api/chat', payload);
     return response.data;
 
   } catch (error) {
@@ -81,7 +83,7 @@ export const sendChatMessage = async (message, context = {}, imageData = null) =
  */
 export const getChatSuggestions = async () => {
   try {
-    const response = await api.get('/chat/suggestions');
+    const response = await api.get('/api/chat/suggestions');
     return response.data;
   } catch (error) {
     console.error('Error getting chat suggestions:', error);
@@ -95,7 +97,7 @@ export const getChatSuggestions = async () => {
  */
 export const clearChatHistory = async (sessionId = null) => {
   try {
-    const response = await api.post('/chat/clear', {
+    const response = await api.post('/api/chat/clear', {
       session_id: sessionId
     });
     return response.data;
@@ -112,7 +114,7 @@ export const clearChatHistory = async (sessionId = null) => {
 export const getChatHistory = async (sessionId = null) => {
   try {
     const params = sessionId ? { session_id: sessionId } : {};
-    const response = await api.get('/chat/history', { params });
+    const response = await api.get('/api/chat/history', { params });
     return response.data;
   } catch (error) {
     console.error('Error getting chat history:', error);
@@ -128,7 +130,7 @@ export const getChatHistory = async (sessionId = null) => {
  */
 export const fetchOccurrences = async (params = {}) => {
   try {
-    const response = await api.get('/occurrences', { params });
+    const response = await api.get('/api/occurrences', { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching occurrences:', error);
@@ -141,7 +143,7 @@ export const fetchOccurrences = async (params = {}) => {
  */
 export const fetchStatistics = async () => {
   try {
-    const response = await api.get('/statistics');
+    const response = await api.get('/api/statistics');
     return response.data;
   } catch (error) {
     console.error('Error fetching statistics:', error);
@@ -156,7 +158,7 @@ export const fetchStatistics = async () => {
  */
 export const checkHealth = async () => {
   try {
-    const response = await api.get('/health');
+    const response = await api.get('/api/health');
     return response.data;
   } catch (error) {
     console.error('Error checking health:', error);
