@@ -3,13 +3,14 @@ import './App.css';
 import Header from './components/Layout/Header';
 import MapView from './components/Map/MapView';
 import Chatbot from './components/Chatbot/Chatbot';
+import { fetchOccurrences } from './services/biocache';
 
 function App() {
   const [occurrences, setOccurrences] = useState([]);
   const [filters, setFilters] = useState({});
   const [facets, setFacets] = useState({});
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // New state for first load
+  const [initialLoading, setInitialLoading] = useState(true);
   const [showExplore, setShowExplore] = useState(false);
   const [totalInViewport, setTotalInViewport] = useState(0);
   const [selectedRegion, setSelectedRegion] = useState(null);
@@ -18,16 +19,14 @@ function App() {
   const loadViewportData = async (bounds) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      // Use the fetchOccurrences service with proper API URL
+      const data = await fetchOccurrences({
         north: bounds.north,
         south: bounds.south,
         east: bounds.east,
         west: bounds.west,
         ...filters
       });
-      
-      const response = await fetch(`/api/occurrences?${params}`);
-      const data = await response.json();
       
       setOccurrences(data.occurrences || []);
       setFacets(data.facets || {});
