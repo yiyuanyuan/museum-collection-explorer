@@ -24,9 +24,9 @@ class BiocacheService:
         # Add dataset filter
         fq.append(f'dataResourceUid:"{self.dataset_id}"')
         
-        # Add image filter if requested
-        if filters and filters.get('has_image'):
-            fq.append('multimedia:Image')
+        # # Add image filter if requested
+        # if filters and filters.get('has_image'):
+        fq.append('multimedia:Image')
         
         # Add viewport bounds if provided
         if bounds:
