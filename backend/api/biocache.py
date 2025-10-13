@@ -10,7 +10,7 @@ class BiocacheService:
     def search_occurrences(self, 
                           filters: Optional[Dict] = None, 
                           page: int = 0, 
-                          page_size: int = 2000,
+                          page_size: int = 500,
                           bounds: Optional[Dict] = None,
                           lat: Optional[float] = None,
                           lon: Optional[float] = None,

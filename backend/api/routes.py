@@ -14,7 +14,7 @@ def get_occurrences():
     """Get occurrences with optional filters and viewport bounds"""
     try:
         page = int(request.args.get("page", 0))
-        page_size = int(request.args.get("pageSize", 2000))
+        page_size = int(request.args.get("pageSize", 500))
 
         # Viewport bounds
         bounds = None
