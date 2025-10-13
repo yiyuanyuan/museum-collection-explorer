@@ -65,7 +65,7 @@ function RecordPopup({ record }) {
             </div>
           )}
           
-          {record.basisOfRecord && (
+          {record.recordedBy && (
             <div className="detail-row">
               <span className="detail-label">Recorded By:</span>
               <span className="detail-value">{record.recordedBy}</span>
