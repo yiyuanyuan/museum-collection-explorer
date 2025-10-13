@@ -141,7 +141,7 @@ function MapView({
           {isFullscreen ? '⤓' : '⤢'}
         </button>
       </div>
-      
+      {/*
       <div className="map-filters">
         <FilterPanel 
           facets={facets}
@@ -149,7 +149,7 @@ function MapView({
           currentFilters={filters}
         />
       </div>
-      
+      */}
       <div className="map-content">
         <MapContainer 
           center={mapCenter} 
