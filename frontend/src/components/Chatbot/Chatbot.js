@@ -325,21 +325,23 @@ function Chatbot() {
         </div>
       )}
 
-      {/* Suggestions - Always show exactly 3 */}
-      <div className="suggestions-section">
-        <div className="suggestions-list">
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              className="suggestion-btn"
-              onClick={() => handleSuggestionClick(suggestion)}
-              disabled={isLoading}
-            >
-              {suggestion}
-            </button>
-          ))}
+      {/* Suggestions - Show only when no user messages exist */}
+      {messages.filter(msg => msg.type === 'user').length === 0 && (
+        <div className="suggestions-section">
+          <div className="suggestions-list">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                className="suggestion-btn"
+                onClick={() => handleSuggestionClick(suggestion)}
+                disabled={isLoading}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Input area */}
       <div className="chatbot-input-area">

@@ -448,9 +448,9 @@ class ChatbotService:
     def get_default_suggestions(self) -> List[str]:
         """Get default suggestions"""
         return [
-            "Search for platypus specimens",
-            "What birds are in the collection from NSW?",
-            "Show me the oldest specimens in the collection"
+            "What species were collected in 2020?",
+            "What are the most-collected fish species in NSW?",
+            "Give me a link to the image of the oldest bird specimen in the collection."
         ]
 
     def clear_session(self, session_id: str = "default") -> Dict:
