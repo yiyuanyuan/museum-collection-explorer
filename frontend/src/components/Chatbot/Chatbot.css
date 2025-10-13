@@ -54,7 +54,7 @@
   top: 65px; /* After header */
   left: 0;
   right: 0;
-  bottom: 170px; /* Increased space for suggestions without overlap */
+  bottom: 56px; /* Only space for input area, no suggestions */
   overflow-y: auto;
   padding: 1rem;
   background: #fafafa;
