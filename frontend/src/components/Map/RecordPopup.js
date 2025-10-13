@@ -67,8 +67,8 @@ function RecordPopup({ record }) {
           
           {record.basisOfRecord && (
             <div className="detail-row">
-              <span className="detail-label">Identified By:</span>
-              <span className="detail-value">{record.identifiedBy}</span>
+              <span className="detail-label">Recorded By:</span>
+              <span className="detail-value">{record.recordedBy}</span>
             </div>
           )}
           
