@@ -91,9 +91,9 @@ function App() {
             <div className="museum-label">AUSTRALIAN MUSEUM</div>
             <h1 className="main-title">COLLECTION EXPLORER</h1>
             <div className="landing-nav">
-              <span className="nav-item">CHAT</span>
+              <span className="nav-item">Digitised Specimen Records on Map</span>
               <span className="nav-divider">•</span>
-              <span className="nav-item">DISCOVER</span>
+              <span className="nav-item">AI Assistant</span>
             </div>
             <button className="start-button" onClick={handleStartExploring}>
               START EXPLORING
