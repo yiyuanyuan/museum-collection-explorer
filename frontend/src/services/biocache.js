@@ -3,7 +3,7 @@ import axios from 'axios';
 // Make sure the URL includes /api at the end
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://museum-collection-explorer-api.onrender.com';
 
-export const fetchOccurrences = async (filters = {}, page = 0, pageSize = 300000) => {
+export const fetchOccurrences = async (filters = {}, page = 0, pageSize = 500) => {
   try {
     const params = {
       page,
