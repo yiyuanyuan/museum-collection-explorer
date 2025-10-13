@@ -325,7 +325,7 @@ function Chatbot() {
         </div>
       )}
 
-      {/* Suggestions - Show only when no user messages exist */}
+      {/* Suggestions - Show only when no user messages exist
       {messages.filter(msg => msg.type === 'user').length === 0 && (
         <div className="suggestions-section">
           <div className="suggestions-list">
@@ -342,6 +342,7 @@ function Chatbot() {
           </div>
         </div>
       )}
+      */}
 
       {/* Input area */}
       <div className="chatbot-input-area">

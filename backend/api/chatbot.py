@@ -449,7 +449,7 @@ class ChatbotService:
         """Get default suggestions"""
         return [
             "What species were collected in 2020?",
-            "What are the most-collected fish species in NSW?",
+            "What are the most-collected fish in NSW?",
             "Give me a link to the image of the oldest bird specimen in the collection."
         ]
 
