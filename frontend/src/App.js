@@ -93,7 +93,7 @@ function App() {
             <div className="landing-nav">
               <span className="nav-item">Digitised Specimen Records on Map</span>
               <span className="nav-divider">•</span>
-              <span className="nav-item">AI Assistant</span>
+              <span className="nav-item">AI Chat Assistant</span>
             </div>
             <button className="start-button" onClick={handleStartExploring}>
               START EXPLORING
