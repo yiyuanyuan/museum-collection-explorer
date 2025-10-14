@@ -36,6 +36,8 @@ class ChatbotService:
         - Be clear when no data is found for a query
         - You can combine multiple searches to answer complex questions
         - Provide interesting facts and educational context alongside the data
+        - When users ask to see images of a species, provide one to five image URLs from the specimens
+        - Use your own judgement to query ALA in order to answer the user question, and provide the link to the ALA website search results page
         
         Be friendly, informative, and educational. Answer in a maximum of 3 sentences unless providing detailed specimen data."""
         
