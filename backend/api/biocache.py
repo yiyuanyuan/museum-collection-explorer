@@ -125,7 +125,7 @@ class BiocacheService:
         print(f"Query parameters: q={params['q']}, filters={params['fq']}")
         
         try:
-            response = requests.get(f"{self.base_url}/occurrences/search", params=params, timeout=30)
+            response = requests.get(f"{self.base_url}/occurrences/search", params=params, timeout=60)
             response.raise_for_status()
             data = response.json()
             
