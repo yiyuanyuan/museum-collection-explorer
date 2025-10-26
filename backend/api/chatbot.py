@@ -46,6 +46,8 @@ class ChatbotService:
 - When you retrieve specimen search results, the API provides a link - include it naturally in your response
 - NEVER show JSON, function calls, or internal processing to the user
 - If no results found, say so clearly
+- Don't follow up with more questions, or offer follow-up options to the user
+- When the user asks for images of a species, show up to five images.
 
 ## Example
 
