@@ -88,17 +88,53 @@ function Chatbot() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } // Use back camera on mobile
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      // Request camera with fallback options
+      let constraints = { 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      };
+      
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        // Fallback: try without facingMode (for desktop)
+        console.log('Trying fallback camera constraints...');
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
       }
+      
+      streamRef.current = stream;
       setShowCamera(true);
+      
+      // Wait for next tick to ensure video element is rendered
+      setTimeout(() => {
+        if (videoRef.current && stream) {
+          videoRef.current.srcObject = stream;
+          // Explicitly play the video
+          videoRef.current.play().catch(e => {
+            console.error('Error playing video:', e);
+          });
+        }
+      }, 100);
+      
     } catch (error) {
       console.error('Error accessing camera:', error);
-      alert('Unable to access camera. Please make sure you have granted camera permissions.');
+      let errorMessage = 'Unable to access camera. ';
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage += 'Please grant camera permissions in your browser settings.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += 'No camera found on this device.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage += 'Camera is already in use by another application.';
+      } else {
+        errorMessage += 'Please check your camera settings and try again.';
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -114,18 +150,35 @@ function Chatbot() {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
+      
+      // Check if video is actually playing and has dimensions
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        alert('Camera feed not ready. Please wait a moment and try again.');
+        return;
+      }
+      
+      // Set canvas dimensions to match video
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+      
       const context = canvas.getContext('2d');
-      context.drawImage(video, 0, 0);
       
-      // Get image data from canvas
-      const imageData = canvas.toDataURL('image/jpeg');
-      setSelectedImage(imageData);
-      setImagePreview(imageData);
+      // Draw the current video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Stop camera after capturing
-      stopCamera();
+      // Convert canvas to base64 image
+      const imageData = canvas.toDataURL('image/jpeg', 0.9);
+      
+      // Verify we actually captured something
+      if (imageData && imageData.length > 100) {
+        setSelectedImage(imageData);
+        setImagePreview(imageData);
+        
+        // Stop camera after successful capture
+        stopCamera();
+      } else {
+        alert('Failed to capture image. Please try again.');
+      }
     }
   };
 
@@ -211,6 +264,11 @@ function Chatbot() {
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Handle line breaks
     text = text.replace(/\n/g, '<br>');
+    // Convert URLs to clickable links
+    text = text.replace(
+      /(https?:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">$1</a>'
+    );
     return text;
   };
 
@@ -308,7 +366,12 @@ function Chatbot() {
             ref={videoRef} 
             autoPlay 
             playsInline
+            muted
             className="camera-video"
+            onLoadedMetadata={(e) => {
+              // Ensure video starts playing once metadata is loaded
+              e.target.play().catch(err => console.error('Play error:', err));
+            }}
           />
           <canvas 
             ref={canvasRef} 

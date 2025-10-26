@@ -16,17 +16,13 @@ class BiocacheService:
                           lon: Optional[float] = None,
                           radius: Optional[float] = None) -> Dict:
         """
-        Enhanced search occurrences with support for function calling parameters
+        Enhanced search occurrences with support for comprehensive filtering
         """
         # Build filter query array
         fq = []
         
         # Add dataset filter
         fq.append(f'dataResourceUid:"{self.dataset_id}"')
-        
-        # # Add image filter if requested
-        # if filters and filters.get('has_image'):
-        fq.append('multimedia:Image')
         
         # Add viewport bounds if provided
         if bounds:
@@ -39,12 +35,9 @@ class BiocacheService:
             # Scientific name - handle different taxonomic levels
             if filters.get('scientific_name'):
                 scientific_name = filters['scientific_name']
-                # Build a comprehensive query for taxonomic names
                 taxonomic_query_parts = []
                 
-                # Check if it's likely a higher taxon
                 if self._is_higher_taxon(scientific_name):
-                    # Search in multiple taxonomic fields
                     taxonomic_query_parts.extend([
                         f'family:"{scientific_name}"',
                         f'order:"{scientific_name}"',
@@ -53,7 +46,6 @@ class BiocacheService:
                         f'kingdom:"{scientific_name}"'
                     ])
                 
-                # Always include scientific name and genus
                 taxonomic_query_parts.extend([
                     f'scientificName:"{scientific_name}"',
                     f'genus:"{scientific_name}"',
@@ -61,7 +53,6 @@ class BiocacheService:
                     f'raw_scientificName:"{scientific_name}"'
                 ])
                 
-                # Combine with OR logic
                 fq.append(f'({" OR ".join(taxonomic_query_parts)})')
                 print(f"Searching for scientific name: {scientific_name}")
             
@@ -71,35 +62,54 @@ class BiocacheService:
                 fq.append(f'(vernacularName:"{common_name}" OR raw_vernacularName:"{common_name}")')
                 print(f"Searching for common name: {common_name}")
             
-            # Collection name
-            if filters.get('collection_name'):
-                fq.append(f'collectionName:"{filters["collection_name"]}"')
-            
-            # State/Province
+            # Geographic filters
             if filters.get('state_province'):
                 fq.append(f'stateProvince:"{filters["state_province"]}"')
             
-            # Single year
+            if filters.get('locality'):
+                fq.append(f'locality:"{filters["locality"]}"')
+            
+            # Temporal filters
             if filters.get('year'):
                 fq.append(f'year:{filters["year"]}')
             
-            # Year range
             if filters.get('year_range'):
-                # Expected format: "[2020 TO 2023]"
                 fq.append(f'year:{filters["year_range"]}')
             
-            # Basis of record
+            if filters.get('month'):
+                fq.append(f'month:{filters["month"]}')
+            
+            if filters.get('day'):
+                fq.append(f'day:{filters["day"]}')
+            
+            # Specimen identification
+            if filters.get('catalog_number'):
+                fq.append(f'(catalogNumber:"{filters["catalog_number"]}" OR raw_catalogNumber:"{filters["catalog_number"]}")')
+            
+            if filters.get('recorded_by'):
+                fq.append(f'recordedBy:"{filters["recorded_by"]}"')
+            
+            if filters.get('identified_by'):
+                fq.append(f'identifiedBy:"{filters["identified_by"]}"')
+            
+            # Collection filters
+            if filters.get('collection_name'):
+                fq.append(f'collectionName:"{filters["collection_name"]}"')
+            
             if filters.get('basis_of_record'):
                 fq.append(f'basisOfRecord:"{filters["basis_of_record"]}"')
             
-            # Institution
             if filters.get('institution'):
                 fq.append(f'institutionName:"{filters["institution"]}"')
+            
+            # Image filter (only if explicitly requested)
+            if filters.get('has_image'):
+                fq.append('multimedia:Image')
         
         # Build the main query
-        q = '*:*'  # Query everything, use filters for constraints
+        q = '*:*'
         
-        # If searching by common name or text, also use q parameter
+        # If free text search provided, use it as main query
         if filters and filters.get('free_text_search'):
             q = filters['free_text_search']
         
@@ -109,9 +119,9 @@ class BiocacheService:
             'fq': fq,
             'pageSize': page_size,
             'start': page * page_size,
-            'facets': 'collectionName,stateProvince,year,family,order,class,basisOfRecord',
+            'facets': 'collectionName,stateProvince,year,family,order,class,basisOfRecord,institutionName,genus',
             'flimit': 1000,
-            'sort': 'score',  # Sort by relevance
+            'sort': 'score',
             'dir': 'desc'
         }
         
@@ -124,37 +134,32 @@ class BiocacheService:
         
         print(f"Query parameters: q={params['q']}, filters={params['fq']}")
         
-        try:
-            response = requests.get(f"{self.base_url}/occurrences/search", params=params, timeout=60)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Process occurrences
-            processed_occurrences = []
-            for occ in data.get('occurrences', []):
-                processed = self._process_occurrence(occ)
-                # Apply any additional filtering if needed
-                if self._should_include_occurrence(processed, bounds):
-                    processed_occurrences.append(processed)
-            
-            total_records = data.get('totalRecords', 0)
-            print(f"Query result: {total_records} total records, returning {len(processed_occurrences)} records")
-            
-            return {
-                'occurrences': processed_occurrences,
-                'totalRecords': total_records,
-                'facets': self._process_facets(data.get('facetResults', []))
-            }
-            
-        except Exception as e:
-            print(f"Error fetching occurrences: {str(e)}")
-            return {'occurrences': [], 'totalRecords': 0, 'facets': {}}
+        response = requests.get(f"{self.base_url}/occurrences/search", params=params, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Process occurrences
+        processed_occurrences = []
+        for occ in data.get('occurrences', []):
+            processed = self._process_occurrence(occ)
+            if self._should_include_occurrence(processed, bounds):
+                processed_occurrences.append(processed)
+        
+        total_records = data.get('totalRecords', 0)
+        print(f"Query result: {total_records} total records, returning {len(processed_occurrences)} records")
+        
+        # Build the ALA URL for user reference
+        ala_url = self.build_ala_url(filters, bounds)
+        
+        return {
+            'occurrences': processed_occurrences,
+            'totalRecords': total_records,
+            'facets': self._process_facets(data.get('facetResults', [])),
+            'ala_url': ala_url
+        }
     
     def get_statistics(self, filters: Optional[Dict] = None) -> Dict:
-        """
-        Get statistics about the dataset with optional filters
-        """
-        # Use search with page_size=0 to just get facets and counts
+        """Get statistics about the dataset with optional filters"""
         results = self.search_occurrences(
             filters=filters,
             page=0,
@@ -167,9 +172,7 @@ class BiocacheService:
         }
     
     def search_by_taxon(self, taxon_name: str, rank: Optional[str] = None) -> Dict:
-        """
-        Search by taxonomic name at any rank
-        """
+        """Search by taxonomic name at any rank"""
         filters = {'scientific_name': taxon_name}
         return self.search_occurrences(filters=filters)
     
@@ -177,9 +180,7 @@ class BiocacheService:
                            state: Optional[str] = None,
                            bounds: Optional[Dict] = None,
                            radius_search: Optional[Dict] = None) -> Dict:
-        """
-        Search by geographic location
-        """
+        """Search by geographic location"""
         filters = {}
         if state:
             filters['state_province'] = state
@@ -198,9 +199,7 @@ class BiocacheService:
                        year: Optional[int] = None,
                        start_year: Optional[int] = None,
                        end_year: Optional[int] = None) -> Dict:
-        """
-        Search by temporal parameters
-        """
+        """Search by temporal parameters"""
         filters = {}
         
         if year:
@@ -210,11 +209,77 @@ class BiocacheService:
         
         return self.search_occurrences(filters=filters)
     
+    def build_ala_url(self, filters: Optional[Dict] = None, bounds: Optional[Dict] = None) -> str:
+        """Build a valid ALA search URL - uses URL-encoded format that ALA expects"""
+        base = "https://biocache.ala.org.au/occurrences/search?q=*:*"
+        # Use %22 for quotes (URL encoded) and camelCase field names
+        params = [f"fq=dataResourceUid:%22{self.dataset_id}%22"]
+        
+        if filters:
+            # Scientific name - check if higher taxon
+            if filters.get('scientific_name'):
+                name = filters['scientific_name']
+                if self._is_higher_taxon(name):
+                    params.append(f'fq=family:%22{name}%22')
+                else:
+                    params.append(f'fq=genus:%22{name}%22')
+            
+            # Common name
+            if filters.get('common_name'):
+                params.append(f'fq=vernacularName:%22{filters["common_name"]}%22')
+            
+            # Geographic
+            if filters.get('state_province'):
+                params.append(f'fq=stateProvince:%22{filters["state_province"]}%22')
+            
+            if filters.get('locality'):
+                params.append(f'fq=locality:%22{filters["locality"]}%22')
+            
+            # Temporal
+            if filters.get('year'):
+                params.append(f'fq=year:%22{filters["year"]}%22')
+            
+            if filters.get('year_range'):
+                # Year ranges don't use quotes, just brackets
+                year_range = filters['year_range'].replace(' ', '%20')
+                params.append(f'fq=year:{year_range}')
+            
+            if filters.get('month'):
+                params.append(f'fq=month:{filters["month"]}')
+            
+            # Specimen details
+            if filters.get('catalog_number'):
+                params.append(f'fq=catalogNumber:%22{filters["catalog_number"]}%22')
+            
+            if filters.get('recorded_by'):
+                params.append(f'fq=recordedBy:%22{filters["recorded_by"]}%22')
+            
+            if filters.get('identified_by'):
+                params.append(f'fq=identifiedBy:%22{filters["identified_by"]}%22')
+            
+            # Collection
+            if filters.get('collection_name'):
+                params.append(f'fq=collectionName:%22{filters["collection_name"]}%22')
+            
+            if filters.get('institution'):
+                params.append(f'fq=institutionName:%22{filters["institution"]}%22')
+            
+            if filters.get('basis_of_record'):
+                params.append(f'fq=basisOfRecord:%22{filters["basis_of_record"]}%22')
+            
+            # Images
+            if filters.get('has_image'):
+                params.append('fq=multimedia:Image')
+        
+        # Add bounds if provided
+        if bounds:
+            params.append(f'fq=decimalLatitude:[{bounds["south"]}%20TO%20{bounds["north"]}]')
+            params.append(f'fq=decimalLongitude:[{bounds["west"]}%20TO%20{bounds["east"]}]')
+        
+        return base + "&" + "&".join(params)
+    
     def _is_higher_taxon(self, name: str) -> bool:
-        """
-        Check if a name is likely a higher taxonomic rank
-        """
-        # Common suffixes for higher taxa
+        """Check if a name is likely a higher taxonomic rank"""
         higher_taxon_suffixes = [
             'idae',  # Family
             'inae',  # Subfamily
@@ -231,10 +296,7 @@ class BiocacheService:
         return any(name_lower.endswith(suffix) for suffix in higher_taxon_suffixes)
     
     def _should_include_occurrence(self, occurrence: Dict, bounds: Optional[Dict]) -> bool:
-        """
-        Additional filtering logic for occurrences
-        """
-        # If bounds are specified, double-check the occurrence is within them
+        """Additional filtering logic for occurrences"""
         if bounds:
             lat = occurrence.get('latitude')
             lon = occurrence.get('longitude')
@@ -248,7 +310,7 @@ class BiocacheService:
         return True
     
     def _process_occurrence(self, occ: Dict) -> Dict:
-        """Enhanced processing of occurrence records"""
+        """Enhanced processing of occurrence records with all fields"""
         return {
             'id': occ.get('uuid'),
             'latitude': occ.get('decimalLatitude'),
@@ -273,25 +335,23 @@ class BiocacheService:
             'family': occ.get('family'),
             'genus': occ.get('genus'),
             'species': occ.get('species'),
-            # Additional fields
+            # People
             'recordedBy': occ.get('recordedBy'),
             'identifiedBy': occ.get('identifiedBy'),
+            # Spatial precision
             'coordinateUncertaintyInMeters': occ.get('coordinateUncertaintyInMeters'),
             'dataGeneralizations': occ.get('dataGeneralizations'),
-            # Image URLs
-            'imageUrl': occ.get('imageUrl'),
-            'largeImageUrl': occ.get('largeImageUrl'),
-            'thumbnailUrl': occ.get('thumbnailUrl'),
-            'images': occ.get('images', [])  # Array of all images if multiple
+            # Image URLs - all quality levels
+            'imageUrl': occ.get('imageUrl'),  # Medium quality
+            'largeImageUrl': occ.get('largeImageUrl'),  # High quality
+            'thumbnailUrl': occ.get('thumbnailUrl'),  # Thumbnail
+            'images': occ.get('images', [])  # Array of all images
         }
     
     def _process_facets(self, facet_results: List) -> Dict:
-        """
-        Enhanced facet processing with more field mappings
-        """
+        """Enhanced facet processing with comprehensive field mappings"""
         facets = {}
         
-        # Extended field mapping
         field_map = {
             'collectionName': 'collection_name',
             'stateProvince': 'state_province',
@@ -317,7 +377,7 @@ class BiocacheService:
                         'count': item.get('count')
                     }
                     for item in facet.get('fieldResult', [])
-                    if item.get('label')  # Only include non-null labels
+                    if item.get('label')
                 ]
         
         return facets
