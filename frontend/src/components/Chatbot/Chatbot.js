@@ -259,17 +259,113 @@ function Chatbot() {
     }
   };
 
+  const parseUrlsWithQuotedParams = (text) => {
+    /**
+     * Custom URL parser that handles URLs with spaces inside %22...%22 (quoted parameters)
+     * Example: https://example.com/search?name:%22Yellow-faced Whip Snake%22
+     */
+    const result = [];
+    let currentPos = 0;
+    
+    // Find all potential URL starts
+    const urlStartPattern = /https?:\/\//g;
+    let match;
+    
+    while ((match = urlStartPattern.exec(text)) !== null) {
+      const startIndex = match.index;
+      
+      // Add text before URL
+      if (startIndex > currentPos) {
+        result.push({
+          type: 'text',
+          content: text.substring(currentPos, startIndex)
+        });
+      }
+      
+      // Parse the URL character by character
+      let i = startIndex;
+      let inQuotedSection = false;
+      let quoteCount = 0;
+      
+      while (i < text.length) {
+        const char = text[i];
+        const nextChar = i + 1 < text.length ? text[i + 1] : '';
+        const next2Chars = i + 2 < text.length ? text.substring(i, i + 3) : '';
+        
+        // Check for %22 (URL-encoded quote)
+        if (next2Chars === '%22') {
+          quoteCount++;
+          inQuotedSection = (quoteCount % 2 === 1);
+          i += 3;
+          continue;
+        }
+        
+        // If we're in a quoted section, allow spaces and continue
+        if (inQuotedSection) {
+          i++;
+          continue;
+        }
+        
+        // Outside quoted sections, stop at whitespace or sentence-ending punctuation
+        if (char === ' ' || char === '\n' || char === '\t' || char === '\r') {
+          break;
+        }
+        
+        // Stop at characters that typically end a URL in text
+        // Note: Don't stop at [ or ] as they're valid in URLs (e.g., year ranges)
+        if (char === ')' || char === '"' || char === "'" || char === '<' || char === '>') {
+          break;
+        }
+        
+        i++;
+      }
+      
+      // Extract the complete URL
+      const url = text.substring(startIndex, i);
+      
+      // Clean up trailing punctuation (but keep it if part of URL structure)
+      let cleanUrl = url;
+      if (/[.,;!?]+$/.test(cleanUrl) && !cleanUrl.includes('?')) {
+        cleanUrl = cleanUrl.replace(/[.,;!?]+$/, '');
+      }
+      
+      result.push({
+        type: 'url',
+        content: cleanUrl
+      });
+      
+      currentPos = startIndex + url.length;
+    }
+    
+    // Add remaining text
+    if (currentPos < text.length) {
+      result.push({
+        type: 'text',
+        content: text.substring(currentPos)
+      });
+    }
+    
+    return result;
+  };
+
   const formatMessageText = (text) => {
-    // Handle bold text
+    // Handle bold text first
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
     // Handle line breaks
     text = text.replace(/\n/g, '<br>');
-    // Convert URLs to clickable links
-    text = text.replace(
-      /(https?:\/\/[^\s<]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">$1</a>'
-    );
-    return text;
+    
+    // Parse URLs with our custom parser
+    const parsed = parseUrlsWithQuotedParams(text);
+    
+    // Convert parsed segments to HTML
+    return parsed.map(segment => {
+      if (segment.type === 'url') {
+        return `<a href="${segment.content}" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">${segment.content}</a>`;
+      } else {
+        return segment.content;
+      }
+    }).join('');
   };
 
   const clearConversation = async () => {
@@ -388,25 +484,6 @@ function Chatbot() {
         </div>
       )}
 
-      {/* Suggestions - Show only when no user messages exist
-      {messages.filter(msg => msg.type === 'user').length === 0 && (
-        <div className="suggestions-section">
-          <div className="suggestions-list">
-            {suggestions.map((suggestion, index) => (
-              <button
-                key={index}
-                className="suggestion-btn"
-                onClick={() => handleSuggestionClick(suggestion)}
-                disabled={isLoading}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      */}
-
       {/* Input area */}
       <div className="chatbot-input-area">
         <input
@@ -422,7 +499,7 @@ function Chatbot() {
           title="Upload image"
           disabled={isLoading || showCamera}
         >
-          📁
+          📎
         </button>
         <button 
           onClick={startCamera} 

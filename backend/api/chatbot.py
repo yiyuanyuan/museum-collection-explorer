@@ -1,12 +1,12 @@
 """
 Enhanced chatbot service with comprehensive OpenAI tools API for ALA Biocache integration
-No fallbacks - all errors are explicit and raised
-Minimal examples to demonstrate format without constraining the model
+Implements fallback logic: vernacular name → scientific name (and vice versa)
 """
 import base64
 from typing import Dict, List, Optional
 import json
 import re
+import sys
 from openai import OpenAI
 from config import Config
 from api.biocache import BiocacheService
@@ -229,24 +229,185 @@ Be natural and helpful."""
         return self.conversations[session_id]
 
     def execute_function(self, function_name: str, arguments: Dict) -> Dict:
-        """Execute function - raises exception on error (no fallbacks)"""
+        """Execute function with fallback logic for name conversion (RULE 3)"""
+        print(f"[ChatbotService] execute_function called: {function_name}")
+        print(f"[ChatbotService] Raw arguments from OpenAI: {arguments}")
+        sys.stdout.flush()
+        
         if function_name == "search_specimens":
-            return self._search_specimens(**arguments)
+            return self._search_specimens_with_fallback(**arguments)
         elif function_name == "get_specimen_statistics":
-            return self._get_specimen_statistics(**arguments)
+            return self._get_specimen_statistics_with_fallback(**arguments)
         elif function_name == "get_specimen_by_id":
             return self._get_specimen_by_id(**arguments)
         else:
             raise ValueError(f"Unknown function: {function_name}")
 
+    def _search_specimens_with_fallback(self, **kwargs) -> Dict:
+        """
+        RULE 3 IMPLEMENTATION: Search with fallback
+        - If vernacular name returns 0 results, try scientific name
+        - If scientific name returns 0 results, try vernacular name
+        """
+        print(f"[ChatbotService] _search_specimens_with_fallback called with kwargs: {kwargs}")
+        sys.stdout.flush()
+        
+        # First attempt with original query
+        original_results = self._search_specimens(**kwargs)
+        
+        # If we got results, return them
+        if original_results['total_records'] > 0:
+            return original_results
+        
+        # RULE 3: No results found, try fallback
+        print("[ChatbotService] No results with original query, attempting fallback...")
+        
+        # Case 1: User searched with vernacular name → try scientific name
+        if kwargs.get('common_name'):
+            common_name = kwargs['common_name']
+            print(f"[ChatbotService] Attempting to find scientific name for: {common_name}")
+            
+            # Try to get scientific name from first result's taxonomy
+            scientific_name = self._get_scientific_name_for_common(common_name)
+            
+            if scientific_name:
+                print(f"[ChatbotService] Found scientific name: {scientific_name}, retrying search...")
+                # Retry with scientific name
+                kwargs_copy = kwargs.copy()
+                del kwargs_copy['common_name']
+                kwargs_copy['scientific_name'] = scientific_name
+                
+                fallback_results = self._search_specimens(**kwargs_copy)
+                
+                if fallback_results['total_records'] > 0:
+                    print(f"[ChatbotService] ✓ Fallback successful! Found {fallback_results['total_records']} records")
+                    # Add note about the conversion
+                    fallback_results['fallback_note'] = f"Searched using scientific name '{scientific_name}' for common name '{common_name}'"
+                    return fallback_results
+        
+        # Case 2: User searched with scientific name → try vernacular name
+        elif kwargs.get('scientific_name'):
+            scientific_name = kwargs['scientific_name']
+            print(f"[ChatbotService] Attempting to find vernacular name for: {scientific_name}")
+            
+            # Try to get vernacular name
+            vernacular_name = self._get_vernacular_name_for_scientific(scientific_name)
+            
+            if vernacular_name:
+                print(f"[ChatbotService] Found vernacular name: {vernacular_name}, retrying search...")
+                # Retry with vernacular name
+                kwargs_copy = kwargs.copy()
+                del kwargs_copy['scientific_name']
+                kwargs_copy['common_name'] = vernacular_name
+                
+                fallback_results = self._search_specimens(**kwargs_copy)
+                
+                if fallback_results['total_records'] > 0:
+                    print(f"[ChatbotService] ✓ Fallback successful! Found {fallback_results['total_records']} records")
+                    # Add note about the conversion
+                    fallback_results['fallback_note'] = f"Searched using vernacular name '{vernacular_name}' for scientific name '{scientific_name}'"
+                    return fallback_results
+        
+        # If fallback also failed, return the original empty results
+        print("[ChatbotService] Fallback also returned no results")
+        return original_results
+
+    def _get_scientific_name_for_common(self, common_name: str) -> Optional[str]:
+        """
+        Try to find the scientific name for a common name
+        Uses ALA's name matching API or searches broader context
+        """
+        try:
+            # Try searching ALA species lookup
+            import requests
+            
+            # ALA species lookup endpoint
+            url = "https://bie.ala.org.au/ws/search"
+            params = {
+                'q': common_name,
+                'fq': 'idxtype:TAXON',
+                'pageSize': 1
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('searchResults', {}).get('results', [])
+                
+                if results:
+                    result = results[0]
+                    print(f"[ChatbotService] ALA BIE API result: {result}")
+                    
+                    # Prefer scientificName over name (name might be just genus)
+                    scientific_name = result.get('scientificName') or result.get('name')
+                    
+                    # Also check for acceptedConceptName which is often more complete
+                    if not scientific_name or ' ' not in scientific_name:
+                        scientific_name = result.get('acceptedConceptName') or scientific_name
+                    
+                    if scientific_name:
+                        print(f"[ChatbotService] ALA lookup found scientific name: '{scientific_name}'")
+                        return scientific_name
+                    else:
+                        print(f"[ChatbotService] No scientific name found in result")
+        except Exception as e:
+            print(f"[ChatbotService] Error in ALA species lookup: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        return None
+
+    def _get_vernacular_name_for_scientific(self, scientific_name: str) -> Optional[str]:
+        """
+        Try to find the vernacular/common name for a scientific name
+        Uses ALA's species lookup
+        """
+        try:
+            import requests
+            
+            # ALA species lookup endpoint
+            url = "https://bie.ala.org.au/ws/search"
+            params = {
+                'q': scientific_name,
+                'fq': 'idxtype:TAXON',
+                'pageSize': 1
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('searchResults', {}).get('results', [])
+                
+                if results:
+                    # Get the vernacular name from first result
+                    vernacular_name = results[0].get('commonName') or results[0].get('vernacularName')
+                    if vernacular_name:
+                        print(f"[ChatbotService] ALA lookup found: {vernacular_name}")
+                        return vernacular_name
+        except Exception as e:
+            print(f"[ChatbotService] Error in ALA species lookup: {e}")
+        
+        return None
+
     def _search_specimens(self, **kwargs) -> Dict:
-        """Execute specimen search - no fallbacks, explicit errors"""
+        """Execute specimen search - no fallbacks here, just direct search"""
+        # CRITICAL: Confirm this function is being called
+        import os
+        log_path = os.path.join(os.getcwd(), 'chatbot_debug.log')
+        with open(log_path, 'a') as f:
+            f.write(f"\n=== _search_specimens CALLED ===\n")
+            f.write(f"kwargs: {kwargs}\n")
+            f.flush()
+        
+        print(f"[ChatbotService] _search_specimens called with: {kwargs}")
+        sys.stdout.flush()
+        
         filters = {}
         
-        # Taxonomic
+        # Taxonomic - CRITICAL: Use if/elif to prevent both names (RULE 4)
         if kwargs.get('scientific_name'):
             filters['scientific_name'] = kwargs['scientific_name']
-        if kwargs.get('common_name'):
+        elif kwargs.get('common_name'):
             filters['common_name'] = kwargs['common_name']
         
         # Geographic
@@ -311,6 +472,12 @@ Be natural and helpful."""
             lon=lon,
             radius=radius
         )
+        
+        # DEBUG: Check what we got back
+        print(f"[ChatbotService] search_occurrences returned {results.get('totalRecords')} records")
+        print(f"[ChatbotService] ala_url from backend: {results.get('ala_url')}")
+        import sys
+        sys.stdout.flush()
         
         # Determine image quality
         image_quality = kwargs.get('image_quality', 'thumbnail')
@@ -383,15 +550,72 @@ Be natural and helpful."""
         if results.get('facets'):
             formatted_results['facets'] = results['facets']
         
+        # CRITICAL DEBUG: Log what we're returning
+        import os
+        log_path = os.path.join(os.getcwd(), 'chatbot_debug.log')
+        with open(log_path, 'a') as f:
+            f.write(f"\n=== _search_specimens returning ===\n")
+            f.write(f"total_records: {formatted_results['total_records']}\n")
+            f.write(f"ala_url: {formatted_results.get('ala_url')}\n")
+            f.flush()
+        
+        print(f"[ChatbotService] Returning ala_url: {formatted_results.get('ala_url')}")
+        sys.stdout.flush()
+        
         return formatted_results
+
+    def _get_specimen_statistics_with_fallback(self, **kwargs) -> Dict:
+        """Get statistics with fallback logic"""
+        # First attempt
+        original_results = self._get_specimen_statistics(**kwargs)
+        
+        # If we got results, return them
+        if original_results['total_records'] > 0:
+            return original_results
+        
+        # RULE 3: Try fallback
+        print("[ChatbotService] No statistics with original query, attempting fallback...")
+        
+        # Case 1: Vernacular → Scientific
+        if kwargs.get('common_name'):
+            common_name = kwargs['common_name']
+            scientific_name = self._get_scientific_name_for_common(common_name)
+            
+            if scientific_name:
+                kwargs_copy = kwargs.copy()
+                del kwargs_copy['common_name']
+                kwargs_copy['scientific_name'] = scientific_name
+                
+                fallback_results = self._get_specimen_statistics(**kwargs_copy)
+                if fallback_results['total_records'] > 0:
+                    print(f"[ChatbotService] ✓ Statistics fallback successful!")
+                    return fallback_results
+        
+        # Case 2: Scientific → Vernacular
+        elif kwargs.get('scientific_name'):
+            scientific_name = kwargs['scientific_name']
+            vernacular_name = self._get_vernacular_name_for_scientific(scientific_name)
+            
+            if vernacular_name:
+                kwargs_copy = kwargs.copy()
+                del kwargs_copy['scientific_name']
+                kwargs_copy['common_name'] = vernacular_name
+                
+                fallback_results = self._get_specimen_statistics(**kwargs_copy)
+                if fallback_results['total_records'] > 0:
+                    print(f"[ChatbotService] ✓ Statistics fallback successful!")
+                    return fallback_results
+        
+        return original_results
 
     def _get_specimen_statistics(self, **kwargs) -> Dict:
         """Get statistics - no fallbacks"""
         filters = {}
         
+        # CRITICAL: Use if/elif to prevent both names (RULE 4)
         if kwargs.get('scientific_name'):
             filters['scientific_name'] = kwargs['scientific_name']
-        if kwargs.get('common_name'):
+        elif kwargs.get('common_name'):
             filters['common_name'] = kwargs['common_name']
         if kwargs.get('state_province'):
             filters['state_province'] = kwargs['state_province']

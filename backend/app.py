@@ -39,7 +39,7 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
 
     app.config["PROPAGATE_EXCEPTIONS"] = True
-    app.config["DEBUG"] = False
+    app.config["DEBUG"] = True
     
     return app
 
@@ -48,4 +48,4 @@ app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)
