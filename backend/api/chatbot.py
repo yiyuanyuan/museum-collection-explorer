@@ -39,6 +39,14 @@ class ChatbotService:
 - **get_specimen_statistics**: Get counts and distributions across different categories
 - **get_specimen_by_id**: Look up a specific specimen by catalog number
 
+## CRITICAL RULE: Taxonomic Names
+
+When calling search_specimens or get_specimen_statistics:
+- Use EITHER scientific_name OR common_name - NEVER BOTH in the same function call
+- If the user provides a common name (like "kangaroo"), use only common_name parameter
+- If the user provides a scientific name (like "Macropus rufus"), use only scientific_name parameter
+- The backend will automatically handle fallback if no results are found
+
 ## Response Guidelines
 
 - Be concise and helpful (2-3 sentences for simple queries, more for detailed results)
@@ -52,7 +60,7 @@ class ChatbotService:
 ## Example
 
 User: "Show me kangaroo specimens from the 1980s"
-You: Call search_specimens with appropriate filters, then respond naturally like:
+You: Call search_specimens with common_name="kangaroo" (NOT scientific_name), then respond naturally like:
 "I found 127 kangaroo specimens in the collection from the 1980s. Most are from New South Wales and Queensland. [View full results](link)"
 
 Be natural and helpful."""
@@ -251,6 +259,15 @@ Be natural and helpful."""
         """
         print(f"[ChatbotService] _search_specimens_with_fallback called with kwargs: {kwargs}")
         sys.stdout.flush()
+        
+        # DEFENSIVE: If both scientific_name and common_name are provided, remove common_name
+        # This enforces Rule 4 even if the LLM sends both
+        if kwargs.get('scientific_name') and kwargs.get('common_name'):
+            print(f"[ChatbotService] WARNING: Both scientific_name and common_name provided! Removing common_name to enforce Rule 4.")
+            print(f"[ChatbotService]   scientific_name: {kwargs['scientific_name']}")
+            print(f"[ChatbotService]   common_name (will be ignored): {kwargs['common_name']}")
+            kwargs = kwargs.copy()
+            del kwargs['common_name']
         
         # First attempt with original query
         original_results = self._search_specimens(**kwargs)
@@ -476,8 +493,6 @@ Be natural and helpful."""
         # DEBUG: Check what we got back
         print(f"[ChatbotService] search_occurrences returned {results.get('totalRecords')} records")
         print(f"[ChatbotService] ala_url from backend: {results.get('ala_url')}")
-        import sys
-        sys.stdout.flush()
         
         # Determine image quality
         image_quality = kwargs.get('image_quality', 'thumbnail')
