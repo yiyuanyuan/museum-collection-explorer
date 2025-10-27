@@ -43,6 +43,12 @@ class BiocacheService:
                 scientific_name = scientific_name.strip()
                 scientific_name = ' '.join(scientific_name.split())
                 
+                # Remove subgenus/author info in parentheses
+                # e.g., "Rhipidura (Rhipidura) fuliginosa" -> "Rhipidura fuliginosa"
+                import re
+                scientific_name = re.sub(r'\([^)]*\)', '', scientific_name).strip()
+                scientific_name = ' '.join(scientific_name.split())
+                
                 rank = self.determine_taxonomic_rank(scientific_name)
                 
                 # DEFENSIVE CHECK: If name has 2+ words with capital+lowercase pattern, FORCE it to be species
@@ -188,9 +194,15 @@ class BiocacheService:
         # Remove any extra whitespace between words
         name = ' '.join(name.split())
         
+        # CRITICAL: Remove subgenus/author info in parentheses
+        # e.g., "Rhipidura (Rhipidura) fuliginosa" -> "Rhipidura fuliginosa"
+        import re
+        name = re.sub(r'\([^)]*\)', '', name).strip()
+        name = ' '.join(name.split())  # Clean up extra spaces after removal
+        
         parts = name.split()
         
-        print(f"[BiocacheService] determine_taxonomic_rank input: '{name}'")
+        print(f"[BiocacheService] determine_taxonomic_rank input (after cleaning): '{name}'")
         print(f"[BiocacheService] Parts: {parts}, Length: {len(parts)}")
         sys.stdout.flush()
         
@@ -291,13 +303,16 @@ class BiocacheService:
                 with open(log_path, 'a') as f:
                     f.write(f"\n=== build_ala_url DEBUG ===\n")
                     f.write(f"Input name: '{name}'\n")
-                    f.write(f"Type: {type(name)}\n")
-                    f.write(f"Length: {len(name)}\n")
-                    f.write(f"Repr: {repr(name)}\n")
                 
                 # CRITICAL: Clean the name and ensure proper handling
                 name = name.strip()
                 name = ' '.join(name.split())  # normalize whitespace
+                
+                # Remove subgenus/author info in parentheses
+                # e.g., "Rhipidura (Rhipidura) fuliginosa" -> "Rhipidura fuliginosa"
+                import re
+                name = re.sub(r'\([^)]*\)', '', name).strip()
+                name = ' '.join(name.split())
                 
                 with open(log_path, 'a') as f:
                     f.write(f"After clean: '{name}'\n")
