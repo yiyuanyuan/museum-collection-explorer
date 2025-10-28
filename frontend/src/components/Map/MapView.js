@@ -43,7 +43,6 @@ function FullscreenHandler({ isFullscreen }) {
 }
 
 // Component to handle map events
-// Component to handle map events
 function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPanning, onUserInteraction }) {
   const map = useMap();
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -68,7 +67,6 @@ function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPa
     movestart: () => {
       if (isPopupOpen && !isAutoPanning.current) {
         userInteractionRef.current = true;
-        // Close popup on user interaction
         if (onUserInteraction) {
           onUserInteraction();
         }
@@ -84,7 +82,6 @@ function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPa
     zoomstart: () => {
       if (isPopupOpen) {
         userInteractionRef.current = true;
-        // Close popup on zoom
         if (onUserInteraction) {
           onUserInteraction();
         }
@@ -136,6 +133,7 @@ function MapView({
   const [mapZoom] = useState(4);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [showOnlyWithImages, setShowOnlyWithImages] = useState(true);
   const openPopupInfo = useRef(null);
   const isAutoPanning = useRef(false);
   const mapRef = useRef(null);
@@ -166,7 +164,6 @@ function MapView({
     return Object.values(groups);
   }, [occurrences]);
   
-  // Re-open popup after data reload if one was open
   useEffect(() => {
     if (openPopupInfo.current && !reopenAttempted.current) {
       reopenAttempted.current = true;
@@ -174,11 +171,9 @@ function MapView({
       const { lat, lng, recordIds } = openPopupInfo.current;
       const key = `${lat},${lng}`;
       
-      // Find if the same location still exists in new data
       const matchingGroup = groupedOccurrences.find(group => group.key === key);
       
       if (matchingGroup && markerRefs.current[key]) {
-        // Check if at least one of the same records still exists at this location
         const hasMatchingRecord = matchingGroup.records.some(record => 
           recordIds.includes(record.id)
         );
@@ -192,19 +187,16 @@ function MapView({
             }, 100);
           }
         } else {
-          // Records changed at this location, don't reopen
           openPopupInfo.current = null;
           reopenAttempted.current = false;
         }
       } else {
-        // Location no longer exists in data, clear stored info
         openPopupInfo.current = null;
         reopenAttempted.current = false;
       }
     }
   }, [groupedOccurrences]);
   
-  // Track popup open/close state and autopan
   useEffect(() => {
     if (mapRef.current) {
       const map = mapRef.current;
@@ -212,13 +204,11 @@ function MapView({
       const handlePopupOpen = (e) => {
         setIsPopupOpen(true);
         
-        // Store detailed info about the open popup
         const latlng = e.popup._latlng;
         const lat = latlng.lat.toFixed(6);
         const lng = latlng.lng.toFixed(6);
         const key = `${lat},${lng}`;
         
-        // Find the group at this location to get record IDs
         const group = groupedOccurrences.find(g => g.key === key);
         if (group) {
           openPopupInfo.current = {
@@ -251,16 +241,32 @@ function MapView({
     }
   }, [groupedOccurrences]);
 
-  // Add this function inside MapView component, around line 240
-const handleUserInteraction = () => {
-  // Close any open popup
-  if (mapRef.current) {
-    mapRef.current.closePopup();
-  }
-  // Clear stored popup info
-  openPopupInfo.current = null;
-  setIsPopupOpen(false);
-};
+  const handleUserInteraction = () => {
+    if (mapRef.current) {
+      mapRef.current.closePopup();
+    }
+    openPopupInfo.current = null;
+    setIsPopupOpen(false);
+  };
+  
+  const handleBoundsChangeWithFilter = (bounds) => {
+    onBoundsChange(bounds, showOnlyWithImages);
+  };
+
+  const toggleImageFilter = () => {
+    const newValue = !showOnlyWithImages;
+    setShowOnlyWithImages(newValue);
+    if (mapRef.current) {
+      const map = mapRef.current;
+      const bounds = map.getBounds();
+      onBoundsChange({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest()
+      }, newValue);
+    }
+  };
   
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -283,15 +289,7 @@ const handleUserInteraction = () => {
           {isFullscreen ? '⤓' : '⤢'}
         </button>
       </div>
-      {/*
-      <div className="map-filters">
-        <FilterPanel 
-          facets={facets}
-          onFilterChange={onFilterChange}
-          currentFilters={filters}
-        />
-      </div>
-      */}
+      
       <div className="map-content">
         <MapContainer 
           center={mapCenter} 
@@ -311,14 +309,13 @@ const handleUserInteraction = () => {
           <FullscreenHandler isFullscreen={isFullscreen} />
           
           <ViewportManager 
-            onBoundsChange={onBoundsChange} 
+            onBoundsChange={handleBoundsChangeWithFilter} 
             selectedRegion={selectedRegion}
             isPopupOpen={isPopupOpen}
             isAutoPanning={isAutoPanning}
             onUserInteraction={handleUserInteraction}
           />
           
-          {/* Grouped markers - one marker per location with multiple records */}
           {groupedOccurrences.map((group) => {
             const markerKey = group.key;
             return (
@@ -339,7 +336,21 @@ const handleUserInteraction = () => {
           })}
         </MapContainer>
         
-        {/* Initial loading overlay - only for first load */}
+        {/* iOS-style toggle switch - positioned below zoom controls */}
+        <div className="image-filter-toggle">
+          <label className="toggle-switch">
+            <input 
+              type="checkbox" 
+              checked={showOnlyWithImages}
+              onChange={toggleImageFilter}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+          <span className="toggle-label">
+            {showOnlyWithImages ? 'Show Records with Images' : 'Show Records with Images'}
+          </span>
+        </div>
+        
         {initialLoading && loading && (
           <div className="loading-overlay">
             <div className="loading-spinner"></div>
@@ -347,7 +358,6 @@ const handleUserInteraction = () => {
           </div>
         )}
         
-        {/* Regular loading indicator - for subsequent loads */}
         {!initialLoading && loading && (
           <div className="loading-indicator">
             <div className="loading-spinner"></div>
@@ -355,7 +365,6 @@ const handleUserInteraction = () => {
         )}
       </div>
       
-      {/* Data info footer */}
       <div className="map-footer">
         <div className="data-source">
           <span className="source-label">Data Source:</span>
@@ -373,9 +382,6 @@ const handleUserInteraction = () => {
                 <span className="stats-total">
                   of <strong>{totalInViewport.toLocaleString()}</strong> specimens
                 </span>
-              )}
-              {totalInViewport > 2000 && (
-                <span className="stats-limit"></span>
               )}
             </>
           ) : (

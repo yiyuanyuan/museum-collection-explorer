@@ -6,7 +6,7 @@ function Chatbot() {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      text: 'Welcome to the Australian Museum Collection Explorer! I can help you learn about specimens in our collection and identify animals from photos. Try uploading an image or asking me a question!'
+      text: 'Welcome to the Australian Museum Collection Explorer! I can help you learn about specimens in our collection and identify animals from photos. I can search specimens by scientific or common name, location, date, or catalog number. Try uploading an image or asking me a question!'
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');

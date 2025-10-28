@@ -35,6 +35,13 @@ def get_occurrences():
         if request.args.get("year"):
             filters["year"] = request.args.get("year")
 
+        # Image filter option - DEBUG LOGGING
+        show_only_with_images_str = request.args.get("showOnlyWithImages", "true")
+        show_only_with_images = show_only_with_images_str.lower() in ['true', '1', 'yes']
+        
+        print(f"[ROUTES DEBUG] showOnlyWithImages parameter received: '{show_only_with_images_str}'")
+        print(f"[ROUTES DEBUG] Converted to boolean: {show_only_with_images}")
+
         # Spatial parameters
         lat = request.args.get("lat", type=float)
         lon = request.args.get("lon", type=float)
@@ -48,6 +55,7 @@ def get_occurrences():
             lat=lat,
             lon=lon,
             radius=radius,
+            show_only_with_images=show_only_with_images,
         )
         return jsonify(results), 200
 

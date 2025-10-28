@@ -16,16 +16,32 @@ function App() {
   const [selectedRegion, setSelectedRegion] = useState(null);
   const debounceTimer = useRef(null);
 
-  const loadViewportData = async (bounds) => {
+  const loadViewportData = async (bounds, showOnlyWithImages = true) => {
     setLoading(true);
+    
+    // DEBUG: Log the parameter
+    console.log('[App.js DEBUG] loadViewportData called with showOnlyWithImages:', showOnlyWithImages);
+    
     try {
       // Use the fetchOccurrences service with proper API URL
-      const data = await fetchOccurrences({
+      const params = {
         north: bounds.north,
         south: bounds.south,
         east: bounds.east,
         west: bounds.west,
+        showOnlyWithImages: showOnlyWithImages,  // Pass the image filter parameter
         ...filters
+      };
+      
+      // DEBUG: Log the params being sent
+      console.log('[App.js DEBUG] Calling fetchOccurrences with params:', params);
+      
+      const data = await fetchOccurrences(params);
+      
+      // DEBUG: Log the result
+      console.log('[App.js DEBUG] Received data:', {
+        occurrencesCount: data.occurrences?.length,
+        totalRecords: data.totalRecords
       });
       
       setOccurrences(data.occurrences || []);
@@ -53,14 +69,17 @@ function App() {
     setFilters(newFilters);
   };
 
-  const handleBoundsChange = (bounds) => {
+  const handleBoundsChange = (bounds, showOnlyWithImages = true) => {
+    // DEBUG: Log bounds change
+    console.log('[App.js DEBUG] handleBoundsChange called with showOnlyWithImages:', showOnlyWithImages);
+    
     // Debounce the API calls to avoid too many requests
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
     
     debounceTimer.current = setTimeout(() => {
-      loadViewportData(bounds);
+      loadViewportData(bounds, showOnlyWithImages);
     }, 500); // Wait 500ms after user stops moving map
   };
 

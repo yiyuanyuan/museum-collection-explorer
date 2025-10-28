@@ -15,12 +15,17 @@ class BiocacheService:
                           bounds: Optional[Dict] = None,
                           lat: Optional[float] = None,
                           lon: Optional[float] = None,
-                          radius: Optional[float] = None) -> Dict:
+                          radius: Optional[float] = None,
+                          show_only_with_images: bool = True) -> Dict:
         """
         Enhanced search occurrences with support for comprehensive filtering
         Uses EXACTLY what the user asks for - no fallback logic here
         Fallback logic is handled by ChatbotService
         """
+        # DEBUG: Log the image filter parameter
+        print(f"[BiocacheService] search_occurrences called with show_only_with_images={show_only_with_images}")
+        sys.stdout.flush()
+        
         # Build filter query array
         fq = []
         
@@ -164,7 +169,7 @@ class BiocacheService:
         processed_occurrences = []
         for occ in data.get('occurrences', []):
             processed = self._process_occurrence(occ)
-            if self._should_include_occurrence(processed, bounds):
+            if self._should_include_occurrence(processed, bounds, show_only_with_images):
                 processed_occurrences.append(processed)
         
         total_records = data.get('totalRecords', 0)
@@ -455,10 +460,10 @@ class BiocacheService:
         name_lower = name.lower()
         return any(name_lower.endswith(suffix) for suffix in higher_taxon_suffixes)
     
-    def _should_include_occurrence(self, occurrence: Dict, bounds: Optional[Dict]) -> bool:
+    def _should_include_occurrence(self, occurrence: Dict, bounds: Optional[Dict], show_only_with_images: bool = True) -> bool:
         """
         Additional filtering logic for occurrences
-        CRITICAL: Only include specimens with BOTH valid locality AND valid images
+        Can optionally filter to only include specimens with valid images
         """
         # Check for valid coordinates
         lat = occurrence.get('latitude')
@@ -472,17 +477,29 @@ class BiocacheService:
                     bounds['west'] <= lon <= bounds['east']):
                 return False
         
-        # CRITICAL FIX: Check for valid image
-        # An occurrence must have at least one valid image URL to be included
-        has_image = (
-            occurrence.get('imageUrl') or 
-            occurrence.get('largeImageUrl') or 
-            occurrence.get('thumbnailUrl') or 
-            (occurrence.get('images') and len(occurrence.get('images', [])) > 0)
-        )
-        
-        if not has_image:
-            return False
+        # Check for valid image (only if requested)
+        if show_only_with_images:
+            has_image = (
+                occurrence.get('imageUrl') or 
+                occurrence.get('largeImageUrl') or 
+                occurrence.get('thumbnailUrl') or 
+                (occurrence.get('images') and len(occurrence.get('images', [])) > 0)
+            )
+            
+            # DEBUG: Log first few occurrences
+            if not hasattr(self, '_debug_count'):
+                self._debug_count = 0
+            if self._debug_count < 3:
+                print(f"[BiocacheService] Specimen {occurrence.get('id')}: has_image={has_image}, show_only_with_images={show_only_with_images}")
+                self._debug_count += 1
+            
+            if not has_image:
+                return False
+        else:
+            # DEBUG: Log that we're NOT filtering by images
+            if not hasattr(self, '_debug_no_filter_logged'):
+                print(f"[BiocacheService] NOT filtering by images (show_only_with_images={show_only_with_images})")
+                self._debug_no_filter_logged = True
         
         return True
     
