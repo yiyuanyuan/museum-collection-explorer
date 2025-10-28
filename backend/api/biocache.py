@@ -456,16 +456,33 @@ class BiocacheService:
         return any(name_lower.endswith(suffix) for suffix in higher_taxon_suffixes)
     
     def _should_include_occurrence(self, occurrence: Dict, bounds: Optional[Dict]) -> bool:
-        """Additional filtering logic for occurrences"""
+        """
+        Additional filtering logic for occurrences
+        CRITICAL: Only include specimens with BOTH valid locality AND valid images
+        """
+        # Check for valid coordinates
+        lat = occurrence.get('latitude')
+        lon = occurrence.get('longitude')
+        if lat is None or lon is None:
+            return False
+        
+        # Check if coordinates are within bounds (if bounds provided)
         if bounds:
-            lat = occurrence.get('latitude')
-            lon = occurrence.get('longitude')
-            if lat is None or lon is None:
-                return False
-            
             if not (bounds['south'] <= lat <= bounds['north'] and
                     bounds['west'] <= lon <= bounds['east']):
                 return False
+        
+        # CRITICAL FIX: Check for valid image
+        # An occurrence must have at least one valid image URL to be included
+        has_image = (
+            occurrence.get('imageUrl') or 
+            occurrence.get('largeImageUrl') or 
+            occurrence.get('thumbnailUrl') or 
+            (occurrence.get('images') and len(occurrence.get('images', [])) > 0)
+        )
+        
+        if not has_image:
+            return False
         
         return True
     
