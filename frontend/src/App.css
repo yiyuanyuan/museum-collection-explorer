@@ -153,6 +153,13 @@ body {
   animation: shake 0.5s;
 }
 
+/* Gentle Bounce Animation for Collapsed Chatbot Drawer */
+@keyframes gentle-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+
 /* Main Content */
 .main-content {
   flex: 1;
@@ -207,64 +214,151 @@ body {
   }
 }
 
+/* Mobile-specific styles */
 @media (max-width: 768px) {
   .main-title {
     font-size: 2.5rem;
   }
   
   .main-content {
-    padding: 1rem;
+    padding: 0;
+    flex-direction: column;
+    position: relative;
+    height: calc(100vh - 60px);
   }
   
   .consent-section {
     padding: 0 1rem;
   }
-}
 
-/* Floating Survey Component */
-.floating-survey {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 1rem 1.25rem;
-  z-index: 999;
-  max-width: 280px;
-  text-align: center;
-}
+  /* Desktop chatbot hidden on mobile */
+  .desktop-only {
+    display: none !important;
+  }
 
-.survey-text {
-  font-size: 0.8125rem;
-  color: #333;
-  line-height: 1.4;
-  margin-bottom: 0.75rem;
-}
+  /* Mobile chatbot drawer hidden on desktop */
+  .mobile-only {
+    display: block;
+  }
 
-.survey-button {
-  display: inline-block;
-  background: #0066cc;
-  color: white;
-  text-decoration: none;
-  padding: 0.625rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.2s;
-  cursor: pointer;
-}
+  /* Map takes full height on mobile */
+  .left-panel {
+    flex: none;
+    height: calc(100vh - 60px); /* Full viewport height minus header */
+    width: 100%;
+  }
 
-.survey-button:hover {
-  background: #0052a3;
-}
+  /* Ensure MapView component and its children take full height */
 
-/* Responsive adjustments for floating survey */
-@media (max-width: 768px) {
+  .left-panel > div,
+
+  .left-panel .map-container,
+
+  .left-panel .leaflet-container {
+
+    height: 100% !important;
+
+  }
+
+  /* Bottom sheet drawer for chatbot */
+  .chatbot-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s ease, height 0.3s ease;
+    z-index: 998;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chatbot-drawer.collapsed {
+    height: 115px;
+    transform: translateY(0);
+  }
+
+  .chatbot-drawer.expanded {
+    height: 75vh;
+    transform: translateY(0);
+  }
+
+  .drawer-handle {
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    background: white;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    user-select: none;
+    flex-shrink: 0;
+  }
+
+  /* Add bounce animation to collapsed drawer */
+  .chatbot-drawer.collapsed .drawer-handle {
+    animation: gentle-bounce 2s ease-in-out infinite;
+  }
+
+  .handle-bar {
+    width: 60px;
+    height: 5px;
+    background: #999;
+    border-radius: 3px;
+    margin: 0 auto 0.5rem;
+    cursor: pointer;
+  }
+
+  .drawer-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+  }
+
+  .drawer-preview {
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .drawer-preview-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+
+  .drawer-preview-text {
+    font-size: 0.8125rem;
+    color: #666;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+    padding: 0 1rem;
+  }
+
+  .drawer-preview-action {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #0066cc;
+  }
+
+  .drawer-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 0 1rem 1rem;
+  }
+
+  .chatbot-drawer.collapsed .drawer-content {
+    display: none;
+  }
+
+  /* Adjust survey position on mobile */
   .floating-survey {
-    bottom: 1rem;
-    right: 1rem;
-    max-width: 240px;
+    bottom: 200px;
+    left: 1rem;
+    max-width: 280px;
     padding: 0.875rem 1rem;
   }
   
@@ -277,4 +371,78 @@ body {
     font-size: 0.8125rem;
     padding: 0.5rem 1rem;
   }
+
+  /* When chatbot is expanded, move survey back to bottom-left corner */
+  .chatbot-drawer.expanded ~ .floating-survey {
+    bottom: 1rem !important;
+    left: 1rem !important;
+    z-index: 1000 !important; /* Above the expanded drawer (which is z-index 998) */
+  }
+}
+
+/* Desktop-specific: hide mobile drawer */
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+
+  .desktop-only {
+    display: block;
+  }
+
+  /* Desktop floating survey position */
+  .floating-survey {
+    bottom: 2rem;
+    left: 2rem;
+    max-width: 280px;
+    padding: 1rem 1.25rem;
+  }
+
+  .survey-text {
+    font-size: 0.8125rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .survey-button {
+    font-size: 0.875rem;
+    padding: 0.625rem 1.25rem;
+  }
+}
+
+/* Ensure Leaflet attribution is behind floating elements */
+.leaflet-bottom.leaflet-right,
+.leaflet-control-attribution {
+  z-index: 1 !important;
+}
+
+/* Floating Survey Component - Shared Styles */
+.floating-survey {
+  position: fixed;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 999;
+  text-align: center;
+}
+
+.survey-text {
+  color: #333;
+  line-height: 1.4;
+}
+
+.survey-button {
+  display: block;
+  width: 100%;
+  background: #0066cc;
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: background 0.2s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.survey-button:hover {
+  background: #0052a3;
 }

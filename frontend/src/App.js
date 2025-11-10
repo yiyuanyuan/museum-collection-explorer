@@ -13,9 +13,9 @@ function App() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [showExplore, setShowExplore] = useState(false);
   const [totalInViewport, setTotalInViewport] = useState(0);
-  const [selectedRegion, setSelectedRegion] = useState(null);
   const [hasConsented, setHasConsented] = useState(false);
   const [shakeConsent, setShakeConsent] = useState(false);
+  const [isChatbotExpanded, setIsChatbotExpanded] = useState(false);
   const debounceTimer = useRef(null);
 
   const loadViewportData = async (bounds, showOnlyWithImages = true) => {
@@ -114,6 +114,10 @@ function App() {
     setShowExplore(false);
   };
 
+  const toggleChatbot = () => {
+    setIsChatbotExpanded(!isChatbotExpanded);
+  };
+
   // Update data when filters change
   useEffect(() => {
     if (showExplore && occurrences.length === 0 && !loading) {
@@ -126,6 +130,7 @@ function App() {
       };
       loadViewportData(bounds);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showExplore, filters]);
 
   if (!showExplore) {
@@ -201,30 +206,70 @@ function App() {
             initialLoading={initialLoading}
             onBoundsChange={handleBoundsChange}
             totalInViewport={totalInViewport}
-            selectedRegion={selectedRegion}
             filters={filters}
             facets={facets}
             onFilterChange={handleFilterChange}
           />
         </div>
         
-        <div className="right-panel">
+        {/* Desktop view - side panel */}
+        <div className="right-panel desktop-only">
           <Chatbot />
         </div>
-      </div>
-      
+
+        {/* Mobile view - bottom sheet */}
+        <div className={`chatbot-drawer mobile-only ${isChatbotExpanded ? 'expanded' : 'collapsed'}`}>
+          <div className="drawer-handle" onClick={toggleChatbot}>
+            <div className="handle-bar"></div>
+            {isChatbotExpanded ? (
+
+              <div className="drawer-label">✕ Close Chat</div>
+
+            ) : (
+
+              <div className="drawer-preview">
+
+                <div className="drawer-preview-title">💬 Tap to chat with AI Assistant</div>
+
+                <div className="drawer-preview-text">
+
+                  I can help answer questions about the specimens and identify animals from photos
+
+                </div>
+
+                <div className="drawer-preview-action"></div>
+
+              </div>
+
+            )}
+          </div>
+          <div className="drawer-content">
+            <Chatbot />
+          </div>
+        </div>
       {/* Floating Survey Component */}
-      <div className="floating-survey">
-        <div className="survey-text">We would appreciate it if you could fill out this survey after interacting with the application.</div>
-        {/* TODO: Replace with your survey URL */}
-        <a 
-          href="https://qualtricsxmv4ln2spch.qualtrics.com/jfe/form/SV_bmvLUlly98nRlOu" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="survey-button"
-        >
-          📋 Take Survey
-        </a>
+
+        <div className="floating-survey">
+
+          <div className="survey-text">We would appreciate it if you could fill out this survey after interacting with the application.</div>
+
+          <a 
+
+            href="https://qualtricsxmv4ln2spch.qualtrics.com/jfe/form/SV_bmvLUlly98nRlOu" 
+
+            target="_blank" 
+
+            rel="noopener noreferrer"
+
+            className="survey-button"
+
+          >
+
+            📋 Take Survey
+
+          </a>
+
+        </div>
       </div>
     </div>
   );
