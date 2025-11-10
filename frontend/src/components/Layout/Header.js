@@ -1,7 +1,17 @@
 import React from 'react';
 import './Header.css';
 
-function Header() {
+function Header({ currentView, hasConsented, onNavigateToExplore, onNavigateToHome }) {
+  const handleExploreClick = (e) => {
+    e.preventDefault();
+    onNavigateToExplore();
+  };
+
+  const handleHomeClick = (e) => {
+    e.preventDefault();
+    onNavigateToHome();
+  };
+
   return (
     <header className="header">
       <div className="header-content">
@@ -14,8 +24,20 @@ function Header() {
           <span className="logo-text">COLLECTION EXPLORER (Testing)</span>
         </div>
         <nav className="nav">
-          <a href="/" className="nav-link">HOME</a>
-          <a href="#explore" className="nav-link active">EXPLORE</a>
+          <a 
+            href="#home" 
+            className={`nav-link ${currentView === 'home' ? 'active' : ''}`}
+            onClick={handleHomeClick}
+          >
+            HOME
+          </a>
+          <a 
+            href="#explore" 
+            className={`nav-link ${currentView === 'explore' ? 'active' : ''} ${!hasConsented ? 'disabled' : ''}`}
+            onClick={handleExploreClick}
+          >
+            EXPLORE
+          </a>
         </nav>
       </div>
     </header>

@@ -14,6 +14,8 @@ function App() {
   const [showExplore, setShowExplore] = useState(false);
   const [totalInViewport, setTotalInViewport] = useState(0);
   const [selectedRegion, setSelectedRegion] = useState(null);
+  const [hasConsented, setHasConsented] = useState(false);
+  const [shakeConsent, setShakeConsent] = useState(false);
   const debounceTimer = useRef(null);
 
   const loadViewportData = async (bounds, showOnlyWithImages = true) => {
@@ -84,7 +86,32 @@ function App() {
   };
 
   const handleStartExploring = () => {
+    if (!hasConsented) {
+      // Trigger shake animation
+      setShakeConsent(true);
+      setTimeout(() => setShakeConsent(false), 500);
+      return;
+    }
     setShowExplore(true);
+  };
+
+  const handleConsentChange = (e) => {
+    setHasConsented(e.target.checked);
+  };
+
+  const handleNavigateToExplore = () => {
+    if (!hasConsented) {
+      // Trigger shake animation
+      setShakeConsent(true);
+      setTimeout(() => setShakeConsent(false), 500);
+      return false;
+    }
+    setShowExplore(true);
+    return true;
+  };
+
+  const handleNavigateToHome = () => {
+    setShowExplore(false);
   };
 
   // Update data when filters change
@@ -104,7 +131,12 @@ function App() {
   if (!showExplore) {
     return (
       <div className="app">
-        <Header />
+        <Header 
+          currentView="home"
+          hasConsented={hasConsented}
+          onNavigateToExplore={handleNavigateToExplore}
+          onNavigateToHome={handleNavigateToHome}
+        />
         <div className="landing-page">
           <div className="landing-content">
             <div className="museum-label">AUSTRALIAN MUSEUM</div>
@@ -114,9 +146,39 @@ function App() {
               <span className="nav-divider">•</span>
               <span className="nav-item">AI Chat Assistant</span>
             </div>
-            <button className="start-button" onClick={handleStartExploring}>
+            <button 
+              className={`start-button ${!hasConsented ? 'disabled' : ''}`}
+              onClick={handleStartExploring}
+            >
               START EXPLORING
             </button>
+            
+            {/* Consent Section */}
+            <div className={`consent-section ${shakeConsent ? 'shake' : ''}`}>
+              <div className="consent-checkbox-row">
+                <input
+                  type="checkbox"
+                  id="consent-checkbox"
+                  className="consent-checkbox"
+                  checked={hasConsented}
+                  onChange={handleConsentChange}
+                />
+                <label htmlFor="consent-checkbox" className="consent-label">
+                  I have read the participant information statement and consent form, and I give my consent in participating in this research study
+                </label>
+              </div>
+              <div className="consent-link-row">
+                {/* TODO: Replace with your OneDrive URL */}
+                <a 
+                  href="https://studentutsedu-my.sharepoint.com/:b:/g/personal/yiyuan_wang_uts_edu_au/EWU_FHTquEFNjBjDneMbeBUBg6pDcTHM0YJWjHqmqnx4GQ?e=V6Weeg" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="consent-document-link"
+                >
+                  Participant Information Statement and Consent Form
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -125,7 +187,12 @@ function App() {
 
   return (
     <div className="app">
-      <Header />
+      <Header 
+        currentView="explore"
+        hasConsented={hasConsented}
+        onNavigateToExplore={handleNavigateToExplore}
+        onNavigateToHome={handleNavigateToHome}
+      />
       <div className="main-content">
         <div className="left-panel">
           <MapView 
@@ -144,6 +211,20 @@ function App() {
         <div className="right-panel">
           <Chatbot />
         </div>
+      </div>
+      
+      {/* Floating Survey Component */}
+      <div className="floating-survey">
+        <div className="survey-text">We would appreciate it if you could fill out this survey after interacting with the application.</div>
+        {/* TODO: Replace with your survey URL */}
+        <a 
+          href="https://qualtricsxmv4ln2spch.qualtrics.com/jfe/form/SV_bmvLUlly98nRlOu" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="survey-button"
+        >
+          📋 Take Survey
+        </a>
       </div>
     </div>
   );
