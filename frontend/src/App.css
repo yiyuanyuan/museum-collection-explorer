@@ -83,8 +83,8 @@ body {
 
 .start-button.disabled {
   background: transparent;
-  border-color: #ccc;
-  color: #ccc;
+  border-color: #999;
+  color: #999;
   cursor: not-allowed;
 }
 
