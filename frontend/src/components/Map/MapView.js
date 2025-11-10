@@ -276,9 +276,9 @@ function MapView({
     <div className={`map-view-container ${isFullscreen ? 'fullscreen' : ''}`}>
       <div className="map-header">
         <div className="header-content">
-          <h3 className="map-title">Specimen Collection Map</h3>
+          <h3 className="map-title">Specimen Map</h3>
           <p className="map-subtitle">
-            Keep zooming in and click on markers to explore specimens
+            Zoom in and click on markers to view specimens
           </p>
         </div>
         <button 

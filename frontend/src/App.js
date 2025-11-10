@@ -233,7 +233,7 @@ function App() {
 
                 <div className="drawer-preview-text">
 
-                  I can help answer questions about the specimens and identify animals from photos
+                  I can help answer questions about the collection and identify animals from photos
 
                 </div>
 
