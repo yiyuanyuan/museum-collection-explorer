@@ -282,7 +282,7 @@ body {
   }
 
   .chatbot-drawer.expanded {
-    height: 70vh;
+    height: 60vh;
     transform: translateY(0);
   }
 

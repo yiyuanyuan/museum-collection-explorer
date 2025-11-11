@@ -54,7 +54,7 @@
   top: 65px; /* After header */
   left: 0;
   right: 0;
-  bottom: 56px; /* Only space for input area, no suggestions */
+  bottom: 56px; /* Only space for input area */
   overflow-y: auto;
   padding: 1rem;
   background: #fafafa;
@@ -456,16 +456,18 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  /* Make chatbot container fill the drawer content area */
+  .chatbot-container {
+    height: 100% !important; /* Override the fixed 710px */
+    border: none; /* Remove border on mobile since drawer has its own styling */
+  }
+  
   .message-bubble {
     max-width: 85%;
   }
   
   .camera-view {
     margin: 0.25rem 0.5rem;
-  }
-  
-  .chatbot-input-area {
-    padding: 0.75rem;
   }
   
   .chatbot-header {
@@ -482,7 +484,19 @@
     height: 35px;
   }
   
+  /* Adjust the messages area - only space for input area since suggestions aren't rendered */
   .chatbot-messages {
-    bottom: 160px; /* Adjust for smaller mobile layout */
+    bottom: 56px; /* Only space for input area */
+  }
+  
+  /* Suggestions section positioning (if ever enabled) */
+  .suggestions-section {
+    bottom: 56px; /* Above input area */
+  }
+  
+  /* Input area styling and positioning */
+  .chatbot-input-area {
+    padding: 0.75rem;
+    bottom: 0;
   }
 }
