@@ -282,7 +282,7 @@ body {
   }
 
   .chatbot-drawer.expanded {
-    height: 60vh;
+    height: 70vh;
     transform: translateY(0);
   }
 
@@ -357,10 +357,20 @@ body {
 
   /* Adjust survey position on mobile */
   .floating-survey {
-    bottom: 200px;
-    left: 1rem;
+    left: 0;
+    bottom: 200px; /* Position from bottom instead of center */
+  }
+  
+  .survey-tab {
+    bottom: 0;
+    top: auto; /* Override the 50% positioning */
+    transform: none; /* Remove the centering transform */
+  }
+  
+  .floating-survey.expanded .survey-content {
+    margin-left: 3rem; /* Space for the tab */
     max-width: 280px;
-    padding: 0.875rem 1rem;
+    padding: 2rem 1rem 1rem;
   }
   
   .survey-text {
@@ -373,11 +383,9 @@ body {
     padding: 0.5rem 1rem;
   }
 
-  /* When chatbot is expanded, move survey back to bottom-left corner */
+  /* When chatbot is expanded, keep survey in middle */
   .chatbot-drawer.expanded ~ .floating-survey {
-    bottom: 1rem !important;
-    left: 1rem !important;
-    z-index: 1000 !important; /* Above the expanded drawer (which is z-index 998) */
+    /* Survey stays in same position */
   }
 }
 
@@ -393,10 +401,20 @@ body {
 
   /* Desktop floating survey position */
   .floating-survey {
+    left: 0;
     bottom: 2rem;
-    left: 2rem;
-    max-width: 280px;
-    padding: 1rem 1.25rem;
+  }
+
+  .survey-tab {
+    bottom: 0;
+    top: auto; /* Override the 50% positioning */
+    transform: none; /* Remove the centering transform */
+  }
+
+  .floating-survey.expanded .survey-content {
+    margin-left: 3rem; /* Space for the tab */
+    max-width: 300px;
+    padding: 2rem 1.25rem 1.25rem;
   }
 
   .survey-text {
@@ -416,14 +434,90 @@ body {
   z-index: 1 !important;
 }
 
-/* Floating Survey Component - Shared Styles */
+/* Floating Survey Component - Collapsible Styles */
 .floating-survey {
   position: fixed;
+  z-index: 999;
+  transition: all 0.3s ease;
+}
+
+/* Collapsed vertical tab */
+.survey-tab {
+  position: fixed;
+  left: 0;
+  top: 80%;
+  transform: translateY(-50%);
+  background: #0066cc;
+  border: none;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding: 1rem 0.5rem;
+  cursor: pointer;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  z-index: 1000;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.survey-tab:hover {
+  background: #0052a3;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+.survey-tab-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  white-space: nowrap;
+}
+
+/* Expanded content */
+.survey-content {
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 999;
   text-align: center;
+  position: relative;
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.floating-survey.expanded .survey-content {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.floating-survey.collapsed .survey-content {
+  display: none;
+}
+
+.survey-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: #999;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.survey-close:hover {
+  color: #333;
 }
 
 .survey-text {

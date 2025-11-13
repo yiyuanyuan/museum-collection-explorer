@@ -16,6 +16,7 @@ function App() {
   const [hasConsented, setHasConsented] = useState(false);
   const [shakeConsent, setShakeConsent] = useState(false);
   const [isChatbotExpanded, setIsChatbotExpanded] = useState(false);
+  const [isSurveyExpanded, setIsSurveyExpanded] = useState(false);
   const debounceTimer = useRef(null);
 
   const loadViewportData = async (bounds, showOnlyWithImages = true) => {
@@ -116,6 +117,10 @@ function App() {
 
   const toggleChatbot = () => {
     setIsChatbotExpanded(!isChatbotExpanded);
+  };
+
+  const toggleSurvey = () => {
+    setIsSurveyExpanded(!isSurveyExpanded);
   };
 
   // Update data when filters change
@@ -222,53 +227,42 @@ function App() {
           <div className="drawer-handle" onClick={toggleChatbot}>
             <div className="handle-bar"></div>
             {isChatbotExpanded ? (
-
               <div className="drawer-label">✕ Close Chat</div>
-
             ) : (
-
               <div className="drawer-preview">
-
                 <div className="drawer-preview-title">💬 Tap to chat with AI Assistant</div>
-
                 <div className="drawer-preview-text">
-
                   I can help answer questions about the collection and identify animals from photos
-
                 </div>
-
                 <div className="drawer-preview-action"></div>
-
               </div>
-
             )}
           </div>
           <div className="drawer-content">
             <Chatbot />
           </div>
         </div>
-      {/* Floating Survey Component */}
 
-        <div className="floating-survey">
-
-          <div className="survey-text">We would appreciate it if you could fill out this survey after interacting with the application.</div>
-
-          <a 
-
-            href="https://qualtricsxmv4ln2spch.qualtrics.com/jfe/form/SV_bmvLUlly98nRlOu" 
-
-            target="_blank" 
-
-            rel="noopener noreferrer"
-
-            className="survey-button"
-
-          >
-
-            📋 Take Survey
-
-          </a>
-
+        {/* Floating Survey Component */}
+        <div className={`floating-survey ${isSurveyExpanded ? 'expanded' : 'collapsed'}`}>
+          {/* Collapsed tab */}
+          <div className="survey-tab" onClick={toggleSurvey}>
+            <span className="survey-tab-text">Take Survey</span>
+          </div>
+          
+          {/* Expanded content */}
+          <div className="survey-content">
+            <button className="survey-close" onClick={toggleSurvey}>✕</button>
+            <div className="survey-text">We would appreciate it if you could fill out this survey after interacting with the application.</div>
+            <a 
+              href="https://qualtricsxmv4ln2spch.qualtrics.com/jfe/form/SV_bmvLUlly98nRlOu" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="survey-button"
+            >
+              📋 Take Survey
+            </a>
+          </div>
         </div>
       </div>
     </div>
