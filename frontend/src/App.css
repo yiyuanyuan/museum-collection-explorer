@@ -379,7 +379,7 @@ body {
   /* Adjust survey position on mobile */
   .floating-survey {
     left: 0;
-    bottom: 25%; /* Position from bottom instead of center */
+    bottom: 22%; /* Position from bottom instead of center */
   }
   
   .survey-tab {
