@@ -457,7 +457,7 @@ body {
 .survey-tab {
   position: fixed;
   left: 0;
-  top: 65%;
+  top: 70%;
   transform: translateY(-50%);
   background: #0066cc;
   border: none;
