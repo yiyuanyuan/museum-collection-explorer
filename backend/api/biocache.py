@@ -394,7 +394,7 @@ class BiocacheService:
                 # Year ranges don't use quotes, just brackets
                 year_range = filters['year_range'].replace(' ', '%20')
                 # Defensive fix: ensure no double closing brackets
-                year_range = year_range.rstrip(']') + ']
+                year_range = year_range.rstrip(']') + ']'
                 params.append(f'fq=year:{year_range}')
             
             if filters.get('month'):
