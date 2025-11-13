@@ -123,8 +123,8 @@ class BiocacheService:
             if filters.get('collection_name'):
                 fq.append(f'collectionName:"{filters["collection_name"]}"')
             
-            if filters.get('basis_of_record'):
-                fq.append(f'basisOfRecord:"{filters["basis_of_record"]}"')
+            #if filters.get('basis_of_record'):
+                #fq.append(f'basisOfRecord:"{filters["basis_of_record"]}"')
             
             if filters.get('institution'):
                 fq.append(f'institutionName:"{filters["institution"]}"')
@@ -146,7 +146,7 @@ class BiocacheService:
             'fq': fq,
             'pageSize': page_size,
             'start': page * page_size,
-            'facets': 'collectionName,stateProvince,year,family,order,class,basisOfRecord,institutionName,genus',
+            'facets': 'collectionName,stateProvince,year,family,order,class,institutionName,genus', #basisOfRecord,
             'flimit': 1000,
             'sort': 'score',
             'dir': 'desc'
@@ -393,6 +393,8 @@ class BiocacheService:
             if filters.get('year_range'):
                 # Year ranges don't use quotes, just brackets
                 year_range = filters['year_range'].replace(' ', '%20')
+                # Defensive fix: ensure no double closing brackets
+                year_range = year_range.rstrip(']') + ']
                 params.append(f'fq=year:{year_range}')
             
             if filters.get('month'):
@@ -415,8 +417,8 @@ class BiocacheService:
             if filters.get('institution'):
                 params.append(f'fq=institutionName:%22{filters["institution"]}%22')
             
-            if filters.get('basis_of_record'):
-                params.append(f'fq=basisOfRecord:%22{filters["basis_of_record"]}%22')
+            #if filters.get('basis_of_record'):
+                #params.append(f'fq=basisOfRecord:%22{filters["basis_of_record"]}%22')
             
             # Images
             if filters.get('has_image'):
@@ -513,7 +515,7 @@ class BiocacheService:
             'commonName': occ.get('vernacularName', ''),
             'catalogNumber': occ.get('raw_catalogNumber', occ.get('catalogNumber')),
             'collectionName': occ.get('collectionName'),
-            'basisOfRecord': occ.get('basisOfRecord'),
+            #'basisOfRecord': occ.get('basisOfRecord'),
             'eventDate': occ.get('eventDate'),
             'locality': occ.get('locality'),
             'stateProvince': occ.get('stateProvince'),
@@ -553,7 +555,7 @@ class BiocacheService:
             'family': 'family',
             'order': 'order',
             'class': 'class',
-            'basisOfRecord': 'basis_of_record',
+            #'basisOfRecord': 'basis_of_record',
             'institutionName': 'institution',
             'kingdom': 'kingdom',
             'phylum': 'phylum',
