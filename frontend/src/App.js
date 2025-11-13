@@ -252,7 +252,7 @@ function App() {
                   onChange={handleConsentChange}
                 />
                 <label htmlFor="consent-checkbox" className="consent-label">
-                  I have read the participant information statement and consent form, and I give my consent in participating in this research study
+                  I have read the participant information statement and consent form, and I consent to participate in this research study
                 </label>
               </div>
               <div className="consent-link-row">
