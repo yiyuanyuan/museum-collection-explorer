@@ -201,7 +201,7 @@ body {
 .floating-survey {
   position: fixed;
   left: 0;
-  bottom: 20%; /* Default desktop position */
+  bottom: 5%; /* Default desktop position */
   z-index: 999;
   transition: all 0.3s ease;
 }
