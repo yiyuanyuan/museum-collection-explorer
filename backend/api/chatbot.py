@@ -148,11 +148,11 @@ Be natural and helpful."""
                                 "type": "string",
                                 "description": "Institution name"
                             },
-                            "basis_of_record": {
-                                "type": "string",
-                                "enum": ["PRESERVED_SPECIMEN", "HUMAN_OBSERVATION", "LIVING_SPECIMEN", "MACHINE_OBSERVATION"],
-                                "description": "Record type"
-                            },
+                            #"basis_of_record": {
+                                #"type": "string",
+                                #"enum": ["PRESERVED_SPECIMEN", "HUMAN_OBSERVATION", "LIVING_SPECIMEN", "MACHINE_OBSERVATION"],
+                                #"description": "Record type"
+                            #},
                             "has_image": {
                                 "type": "boolean",
                                 "description": "Filter by image availability"
@@ -204,7 +204,7 @@ Be natural and helpful."""
                                 "type": "array",
                                 "items": {
                                     "type": "string",
-                                    "enum": ["year", "state_province", "collection_name", "family", "order", "class", "genus", "basis_of_record", "institution"]
+                                    "enum": ["year", "state_province", "collection_name", "family", "order", "class", "genus", "institution"] #"basis_of_record",
                                 },
                                 "description": "Faceted distributions to include"
                             }
@@ -455,8 +455,8 @@ Be natural and helpful."""
             filters['collection_name'] = kwargs['collection_name']
         if kwargs.get('institution'):
             filters['institution'] = kwargs['institution']
-        if kwargs.get('basis_of_record'):
-            filters['basis_of_record'] = kwargs['basis_of_record']
+        #if kwargs.get('basis_of_record'):
+            #filters['basis_of_record'] = kwargs['basis_of_record']
         
         # Images
         if kwargs.get('has_image') is not None:
@@ -529,7 +529,7 @@ Be natural and helpful."""
                 "uuid": occ.get('id'),
                 "collection_name": occ.get('collectionName'),
                 "institution": occ.get('institutionName'),
-                "basis_of_record": occ.get('basisOfRecord'),
+                #"basis_of_record": occ.get('basisOfRecord'),
                 "location": {
                     "state": occ.get('stateProvince'),
                     "locality": occ.get('locality'),
@@ -663,7 +663,7 @@ Be natural and helpful."""
                 'order': 'order',
                 'class': 'class',
                 'genus': 'genus',
-                'basis_of_record': 'basis_of_record',
+                #'basis_of_record': 'basis_of_record',
                 'institution': 'institution'
             }
             
@@ -697,7 +697,7 @@ Be natural and helpful."""
             "collection": {
                 "name": occ.get('collectionName'),
                 "institution": occ.get('institutionName'),
-                "basis_of_record": occ.get('basisOfRecord')
+                #"basis_of_record": occ.get('basisOfRecord')
             },
             "location": {
                 "state": occ.get('stateProvince'),
