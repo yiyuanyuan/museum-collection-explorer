@@ -105,6 +105,10 @@ class ResponseCleaner:
     
     def _fix_urls(self, text: str, function_results: list) -> str:
         """Fix malformed ALA URLs by replacing with correct ones from function results"""
+        print(f"[ResponseCleaner] _fix_urls called")
+        print(f"[ResponseCleaner] Input text length: {len(text)}")
+        print(f"[ResponseCleaner] Input text preview: {text[:200]}...")
+        
         # Extract the correct URL from the last function result
         correct_url = None
         
@@ -114,33 +118,53 @@ class ResponseCleaner:
                     data = json.loads(result['content'])
                     if 'ala_url' in data:
                         correct_url = data['ala_url']
+                        print(f"[ResponseCleaner] Found correct_url: {correct_url}")
+                        print(f"[ResponseCleaner] Bracket count in correct_url: {correct_url.count(']')}")
                         break
-            except:
+            except Exception as e:
+                print(f"[ResponseCleaner] Error parsing result: {e}")
                 continue
         
         if correct_url:
-            # CRITICAL FIX: Match ANY ALA URL with ANY characters after /search
-            # The pattern stops at: whitespace, ), ], or newline
-            # This will match URLs with literal quotes, %22, or any other format
-            ala_pattern = r'https://biocache\.ala\.org\.au/occurrences/search[^\s\)\]\n]*'
+            # IMPROVED REGEX: Match ALA URLs more precisely
+            # Stop at: period+space (end of sentence), newline, or closing paren not in URL
+            # Allow: spaces, brackets, and other URL characters
+            # This pattern will match until it hits ". " (period-space), "\n", or ")" at sentence end
+            ala_pattern = r'https://biocache\.ala\.org\.au/occurrences/search[^\n]*?(?=\s+[a-z]|\.\s|\.?$|\n|$)'
             
             # Find all ALA URLs in the text
             matches = re.findall(ala_pattern, text)
+            print(f"[ResponseCleaner] Found {len(matches)} URL(s) to replace")
+            
             if matches:
+                for i, match in enumerate(matches):
+                    print(f"[ResponseCleaner] Match {i+1}: {match}")
+                    print(f"[ResponseCleaner] Match {i+1} bracket count: {match.count(']')}")
+                    print(f"[ResponseCleaner] Match {i+1} last 30 chars: ...{match[-30:]}")
+                
                 # Replace ALL ALA URLs with the correct one from backend
+                text_before = text
                 text = re.sub(ala_pattern, correct_url, text)
+                
                 print(f"[ResponseCleaner] ✓ Replaced {len(matches)} URL(s)")
-                print(f"[ResponseCleaner]   Old (from model): {matches[0][:80]}...")
-                print(f"[ResponseCleaner]   New (from backend): {correct_url[:80]}...")
+                print(f"[ResponseCleaner] Text changed: {text != text_before}")
+                
+                # Check the result
+                matches_after = re.findall(ala_pattern, text)
+                if matches_after:
+                    print(f"[ResponseCleaner] After replacement, found {len(matches_after)} URL(s)")
+                    for i, match in enumerate(matches_after):
+                        print(f"[ResponseCleaner] After match {i+1} bracket count: {match.count(']')}")
         else:
             # Debug: Check if there are URLs but no correct URL from backend
-            ala_pattern = r'https://biocache\.ala\.org\.au/occurrences/search[^\s\)\]\n]*'
+            ala_pattern = r'https://biocache\.ala\.org\.au/occurrences/search[^\n]*?(?=\s+[a-z]|\.\s|\.?$|\n|$)'
             matches = re.findall(ala_pattern, text)
             if matches:
                 print(f"[ResponseCleaner] ⚠ WARNING: Found {len(matches)} ALA URL(s) but NO correct URL from backend!")
                 print(f"[ResponseCleaner]   This means the backend didn't return ala_url in function results")
                 print(f"[ResponseCleaner]   URL found: {matches[0][:80]}...")
         
+        print(f"[ResponseCleaner] Output text preview: {text[:200]}...")
         return text
     
     def _cleanup_formatting(self, text: str) -> str:

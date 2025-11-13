@@ -2,6 +2,7 @@ import requests
 from typing import Dict, List, Optional, Union
 from config import Config
 import sys
+from urllib.parse import quote
 
 class BiocacheService:
     def __init__(self):
@@ -123,8 +124,8 @@ class BiocacheService:
             if filters.get('collection_name'):
                 fq.append(f'collectionName:"{filters["collection_name"]}"')
             
-            #if filters.get('basis_of_record'):
-                #fq.append(f'basisOfRecord:"{filters["basis_of_record"]}"')
+            if filters.get('basis_of_record'):
+                fq.append(f'basisOfRecord:"{filters["basis_of_record"]}"')
             
             if filters.get('institution'):
                 fq.append(f'institutionName:"{filters["institution"]}"')
@@ -146,7 +147,7 @@ class BiocacheService:
             'fq': fq,
             'pageSize': page_size,
             'start': page * page_size,
-            'facets': 'collectionName,stateProvince,year,family,order,class,institutionName,genus', #basisOfRecord,
+            'facets': 'collectionName,stateProvince,year,family,order,class,basisOfRecord,institutionName,genus',
             'flimit': 1000,
             'sort': 'score',
             'dir': 'desc'
@@ -347,7 +348,8 @@ class BiocacheService:
                 sys.stdout.flush()
                 
                 if rank == 'species':
-                    url_param = f'fq=species:%22{name}%22'
+                    encoded_name = quote(name, safe='')
+                    url_param = f'fq=species:%22{encoded_name}%22'
                     with open(log_path, 'a') as f:
                         f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using species: for {name}")
@@ -355,20 +357,23 @@ class BiocacheService:
                 elif rank == 'genus':
                     # Extract just the genus name (first word)
                     genus_name = name.split()[0] if ' ' in name else name
-                    url_param = f'fq=genus:%22{genus_name}%22'
+                    encoded_genus = quote(genus_name, safe='')
+                    url_param = f'fq=genus:%22{encoded_genus}%22'
                     with open(log_path, 'a') as f:
                         f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using genus: for {genus_name}")
                     params.append(url_param)
                 elif rank == 'family':
-                    url_param = f'fq=family:%22{name}%22'
+                    encoded_name = quote(name, safe='')
+                    url_param = f'fq=family:%22{encoded_name}%22'
                     with open(log_path, 'a') as f:
                         f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using family: for {name}")
                     params.append(url_param)
                 else:
                     # Higher taxonomy - just use the name in a general field
-                    url_param = f'fq=order:%22{name}%22'
+                    encoded_name = quote(name, safe='')
+                    url_param = f'fq=order:%22{encoded_name}%22'
                     with open(log_path, 'a') as f:
                         f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using order/class/phylum for {name}")
@@ -377,14 +382,18 @@ class BiocacheService:
             # Common name - RULE 1: use vernacularName field
             # RULE 4: Changed from 'if' to 'elif'
             elif filters.get('common_name'):
-                params.append(f'fq=vernacularName:%22{filters["common_name"]}%22')
+                encoded_common = quote(filters["common_name"], safe='')
+                params.append(f'fq=vernacularName:%22{encoded_common}%22')
             
             # Geographic
             if filters.get('state_province'):
-                params.append(f'fq=stateProvince:%22{filters["state_province"]}%22')
+                # URL-encode the value to handle spaces and special characters
+                encoded_state = quote(filters["state_province"], safe='')
+                params.append(f'fq=stateProvince:%22{encoded_state}%22')
             
             if filters.get('locality'):
-                params.append(f'fq=locality:%22{filters["locality"]}%22')
+                encoded_locality = quote(filters["locality"], safe='')
+                params.append(f'fq=locality:%22{encoded_locality}%22')
             
             # Temporal
             if filters.get('year'):
@@ -393,8 +402,6 @@ class BiocacheService:
             if filters.get('year_range'):
                 # Year ranges don't use quotes, just brackets
                 year_range = filters['year_range'].replace(' ', '%20')
-                # Defensive fix: ensure no double closing brackets
-                year_range = year_range.rstrip(']') + ']'
                 params.append(f'fq=year:{year_range}')
             
             if filters.get('month'):
@@ -402,23 +409,28 @@ class BiocacheService:
             
             # Specimen details
             if filters.get('catalog_number'):
-                params.append(f'fq=catalogNumber:%22{filters["catalog_number"]}%22')
+                encoded_catalog = quote(filters["catalog_number"], safe='')
+                params.append(f'fq=catalogNumber:%22{encoded_catalog}%22')
             
             if filters.get('recorded_by'):
-                params.append(f'fq=recordedBy:%22{filters["recorded_by"]}%22')
+                encoded_recorded = quote(filters["recorded_by"], safe='')
+                params.append(f'fq=recordedBy:%22{encoded_recorded}%22')
             
             if filters.get('identified_by'):
-                params.append(f'fq=identifiedBy:%22{filters["identified_by"]}%22')
+                encoded_identified = quote(filters["identified_by"], safe='')
+                params.append(f'fq=identifiedBy:%22{encoded_identified}%22')
             
             # Collection
             if filters.get('collection_name'):
-                params.append(f'fq=collectionName:%22{filters["collection_name"]}%22')
+                encoded_collection = quote(filters["collection_name"], safe='')
+                params.append(f'fq=collectionName:%22{encoded_collection}%22')
             
             if filters.get('institution'):
-                params.append(f'fq=institutionName:%22{filters["institution"]}%22')
+                encoded_institution = quote(filters["institution"], safe='')
+                params.append(f'fq=institutionName:%22{encoded_institution}%22')
             
-            #if filters.get('basis_of_record'):
-                #params.append(f'fq=basisOfRecord:%22{filters["basis_of_record"]}%22')
+            if filters.get('basis_of_record'):
+                params.append(f'fq=basisOfRecord:%22{filters["basis_of_record"]}%22')
             
             # Images
             if filters.get('has_image'):
@@ -515,7 +527,7 @@ class BiocacheService:
             'commonName': occ.get('vernacularName', ''),
             'catalogNumber': occ.get('raw_catalogNumber', occ.get('catalogNumber')),
             'collectionName': occ.get('collectionName'),
-            #'basisOfRecord': occ.get('basisOfRecord'),
+            'basisOfRecord': occ.get('basisOfRecord'),
             'eventDate': occ.get('eventDate'),
             'locality': occ.get('locality'),
             'stateProvince': occ.get('stateProvince'),
@@ -555,7 +567,7 @@ class BiocacheService:
             'family': 'family',
             'order': 'order',
             'class': 'class',
-            #'basisOfRecord': 'basis_of_record',
+            'basisOfRecord': 'basis_of_record',
             'institutionName': 'institution',
             'kingdom': 'kingdom',
             'phylum': 'phylum',

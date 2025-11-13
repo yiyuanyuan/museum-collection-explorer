@@ -697,7 +697,7 @@ Be natural and helpful."""
             "collection": {
                 "name": occ.get('collectionName'),
                 "institution": occ.get('institutionName'),
-                #"basis_of_record": occ.get('basisOfRecord')
+                "basis_of_record": occ.get('basisOfRecord')
             },
             "location": {
                 "state": occ.get('stateProvince'),
