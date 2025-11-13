@@ -197,6 +197,15 @@ body {
   margin-bottom: 0.75rem;
 }
 
+/* Floating Survey Component - Base Styles */
+.floating-survey {
+  position: fixed;
+  left: 0;
+  bottom: 20%; /* Default desktop position */
+  z-index: 999;
+  transition: all 0.3s ease;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .main-content {
@@ -370,7 +379,7 @@ body {
   /* Adjust survey position on mobile */
   .floating-survey {
     left: 0;
-    bottom: 200px; /* Position from bottom instead of center */
+    bottom: 25%; /* Position from bottom instead of center */
   }
   
   .survey-tab {
@@ -411,20 +420,26 @@ body {
     display: block;
   }
 
-  /* Desktop floating survey position */
-  .floating-survey {
-    left: 0;
-    bottom: 2rem;
+  /* Hide the collapsible tab on desktop */
+  .floating-survey .survey-tab {
+    display: none !important;
   }
 
-  .survey-tab {
-    bottom: 0;
-    top: auto; /* Override the 50% positioning */
-    transform: none; /* Remove the centering transform */
+  /* Hide the close button on desktop */
+
+  .floating-survey .survey-close {
+
+    display: none !important;
+
   }
 
-  .floating-survey.expanded .survey-content {
-    margin-left: 3rem; /* Space for the tab */
+  /* Always show survey content on desktop */
+  .floating-survey .survey-content {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
+    display: block !important;
+    margin-left: 0;
     max-width: 300px;
     padding: 2rem 1.25rem 1.25rem;
   }
@@ -444,13 +459,6 @@ body {
 .leaflet-bottom.leaflet-right,
 .leaflet-control-attribution {
   z-index: 1 !important;
-}
-
-/* Floating Survey Component - Collapsible Styles */
-.floating-survey {
-  position: fixed;
-  z-index: 999;
-  transition: all 0.3s ease;
 }
 
 /* Collapsed vertical tab */
