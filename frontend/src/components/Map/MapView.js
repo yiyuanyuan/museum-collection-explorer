@@ -347,7 +347,7 @@ function MapView({
             <span className="toggle-slider"></span>
           </label>
           <span className="toggle-label">
-            {showOnlyWithImages ? 'Show Records with Images' : 'Show Records with Images'}
+            {showOnlyWithImages ? 'Show Only Records with Images' : 'Show Only Records with Images'}
           </span>
         </div>
         
