@@ -17,7 +17,12 @@ function App() {
   const [shakeConsent, setShakeConsent] = useState(false);
   const [isChatbotExpanded, setIsChatbotExpanded] = useState(false);
   const [isSurveyExpanded, setIsSurveyExpanded] = useState(false);
+  const [drawerDragOffset, setDrawerDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const debounceTimer = useRef(null);
+  const touchStartY = useRef(null);
+  const touchStartTime = useRef(null);
+  const drawerRef = useRef(null);
 
   const loadViewportData = async (bounds, showOnlyWithImages = true) => {
     setLoading(true);
@@ -123,6 +128,79 @@ function App() {
     setIsSurveyExpanded(!isSurveyExpanded);
   };
 
+  // Touch event handlers for drawer drag
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchStartTime.current = Date.now();
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchStartY.current) return;
+    
+    const currentY = e.touches[0].clientY;
+    const diff = touchStartY.current - currentY; // Positive = swipe up, negative = swipe down
+    
+    // Apply constraints based on current state
+    if (isChatbotExpanded) {
+      // When expanded, only allow dragging down (closing)
+      if (diff < 0) {
+        setDrawerDragOffset(diff);
+      }
+    } else {
+      // When collapsed, only allow dragging up (opening)
+      if (diff > 0) {
+        setDrawerDragOffset(-diff);
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!touchStartY.current) return;
+    
+    const touchEndY = e.changedTouches[0].clientY;
+    const diff = touchStartY.current - touchEndY;
+    const touchDuration = Date.now() - touchStartTime.current;
+    const velocity = Math.abs(diff) / touchDuration; // pixels per ms
+    
+    // Thresholds for determining if drawer should toggle
+    const swipeThreshold = 50; // minimum pixels to swipe
+    const velocityThreshold = 0.5; // minimum velocity for quick swipes
+    
+    let shouldToggle = false;
+    
+    // Fast swipe - prioritize velocity
+    if (velocity > velocityThreshold) {
+      if (diff > 0 && !isChatbotExpanded) {
+        // Fast swipe up while collapsed -> expand
+        shouldToggle = true;
+      } else if (diff < 0 && isChatbotExpanded) {
+        // Fast swipe down while expanded -> collapse
+        shouldToggle = true;
+      }
+    } 
+    // Slow drag - check distance
+    else if (Math.abs(diff) > swipeThreshold) {
+      if (diff > 0 && !isChatbotExpanded) {
+        // Slow drag up while collapsed -> expand
+        shouldToggle = true;
+      } else if (diff < 0 && isChatbotExpanded) {
+        // Slow drag down while expanded -> collapse
+        shouldToggle = true;
+      }
+    }
+    
+    if (shouldToggle) {
+      setIsChatbotExpanded(!isChatbotExpanded);
+    }
+    
+    // Reset drag state
+    setDrawerDragOffset(0);
+    setIsDragging(false);
+    touchStartY.current = null;
+    touchStartTime.current = null;
+  };
+
   // Update data when filters change
   useEffect(() => {
     if (showExplore && occurrences.length === 0 && !loading) {
@@ -223,8 +301,21 @@ function App() {
         </div>
 
         {/* Mobile view - bottom sheet */}
-        <div className={`chatbot-drawer mobile-only ${isChatbotExpanded ? 'expanded' : 'collapsed'}`}>
-          <div className="drawer-handle" onClick={toggleChatbot}>
+        <div 
+          ref={drawerRef}
+          className={`chatbot-drawer mobile-only ${isChatbotExpanded ? 'expanded' : 'collapsed'} ${isDragging ? 'dragging' : ''}`}
+          style={{
+            transform: `translateY(${drawerDragOffset}px)`,
+            transition: isDragging ? 'none' : 'transform 0.3s ease, height 0.3s ease'
+          }}
+        >
+          <div 
+            className="drawer-handle" 
+            onClick={toggleChatbot}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <div className="handle-bar"></div>
             {isChatbotExpanded ? (
               <div className="drawer-label">✕ Close Chat</div>
