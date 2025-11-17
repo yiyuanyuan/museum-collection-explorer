@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Chatbot.css';
 import { sendChatMessage, getChatSuggestions } from '../../services/api';
+import posthog from 'posthog-js';
 
 function Chatbot() {
   const [messages, setMessages] = useState([
@@ -17,7 +18,15 @@ function Chatbot() {
   const [showCamera, setShowCamera] = useState(false);
   const [sessionId] = useState(() => {
     // Generate a unique session ID for this chat session
-    return 'session_' + Math.random().toString(36).substr(2, 9);
+    const id = 'session_' + Math.random().toString(36).substr(2, 9);
+    
+    // Track new conversation session started
+    posthog.capture('chatbot_session_started', {
+      session_id: id,
+      timestamp: new Date().toISOString()
+    });
+    
+    return id;
   });
 
   const messagesEndRef = useRef(null);
@@ -74,6 +83,14 @@ function Chatbot() {
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         alert('Please select an image smaller than 10MB');
+        
+        // Track image upload error
+        posthog.capture('chatbot_image_error', {
+          error: 'File too large',
+          file_size_mb: (file.size / 1024 / 1024).toFixed(2),
+          session_id: sessionId
+        });
+        
         return;
       }
 
@@ -81,6 +98,14 @@ function Chatbot() {
       reader.onloadend = () => {
         setSelectedImage(reader.result);
         setImagePreview(reader.result);
+        
+        // Track image upload
+        posthog.capture('chatbot_image_uploaded', {
+          file_size_mb: (file.size / 1024 / 1024).toFixed(2),
+          file_type: file.type,
+          upload_method: 'file_select',
+          session_id: sessionId
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -109,6 +134,11 @@ function Chatbot() {
       streamRef.current = stream;
       setShowCamera(true);
       
+      // Track camera opened
+      posthog.capture('chatbot_camera_opened', {
+        session_id: sessionId
+      });
+      
       // Wait for next tick to ensure video element is rendered
       setTimeout(() => {
         if (videoRef.current && stream) {
@@ -133,6 +163,13 @@ function Chatbot() {
       } else {
         errorMessage += 'Please check your camera settings and try again.';
       }
+      
+      // Track camera error
+      posthog.capture('chatbot_camera_error', {
+        error_type: error.name,
+        error_message: errorMessage,
+        session_id: sessionId
+      });
       
       alert(errorMessage);
     }
@@ -174,6 +211,13 @@ function Chatbot() {
         setSelectedImage(imageData);
         setImagePreview(imageData);
         
+        // Track photo captured
+        posthog.capture('chatbot_photo_captured', {
+          upload_method: 'camera',
+          resolution: `${video.videoWidth}x${video.videoHeight}`,
+          session_id: sessionId
+        });
+        
         // Stop camera after successful capture
         stopCamera();
       } else {
@@ -185,10 +229,23 @@ function Chatbot() {
   const handleSendMessage = async (message = inputMessage) => {
     if (!message.trim() && !selectedImage) return;
 
+    const messageText = message || (selectedImage ? 'Please analyse this image' : '');
+    const hasImage = !!selectedImage;
+    const messageStartTime = Date.now();
+
+    // Track user message sent
+    posthog.capture('chatbot_user_message', {
+      message: messageText,
+      message_length: messageText.length,
+      has_image: hasImage,
+      session_id: sessionId,
+      timestamp: new Date().toISOString()
+    });
+
     // Create user message
     const userMessage = {
       type: 'user',
-      text: message || (selectedImage ? 'Please analyse this image' : ''),
+      text: messageText,
       image: imagePreview
     };
     
@@ -209,6 +266,8 @@ function Chatbot() {
         imageToSend
       );
 
+      const responseTime = Date.now() - messageStartTime;
+
       // Handle response
       if (response.success) {
         const assistantMessage = {
@@ -216,6 +275,17 @@ function Chatbot() {
           text: response.response
         };
         setMessages(prev => [...prev, assistantMessage]);
+
+        // Track bot response received
+        posthog.capture('chatbot_bot_response', {
+          user_message: messageText,
+          bot_response: response.response,
+          response_length: response.response.length,
+          response_time_ms: responseTime,
+          had_image: hasImage,
+          session_id: sessionId,
+          timestamp: new Date().toISOString()
+        });
 
         // Update suggestions if provided - limit to 3
         if (response.suggestions) {
@@ -226,6 +296,16 @@ function Chatbot() {
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Track error
+      posthog.capture('chatbot_error', {
+        error_message: error.message,
+        user_message: messageText,
+        had_image: hasImage,
+        session_id: sessionId,
+        timestamp: new Date().toISOString()
+      });
+      
       const errorMessage = {
         type: 'assistant',
         text: "I apologize, but I encountered an error. Please try again."
@@ -245,6 +325,12 @@ function Chatbot() {
   };
 
   const handleSuggestionClick = (suggestion) => {
+    // Track suggestion click
+    posthog.capture('chatbot_suggestion_clicked', {
+      suggestion: suggestion,
+      session_id: sessionId
+    });
+    
     if (suggestion.toLowerCase().includes("upload")) {
       fileInputRef.current?.click();
     } else {
@@ -260,18 +346,17 @@ function Chatbot() {
   };
 
   const parseUrlsWithQuotedParams = (text) => {
-    /**
-     * Custom URL parser that handles URLs with spaces inside %22...%22 (quoted parameters)
-     * Example: https://example.com/search?name:%22Yellow-faced Whip Snake%22
-     */
-    const result = [];
+    const urlRegex = /https?:\/\/[^\s]+/g;
+    const matches = [...text.matchAll(urlRegex)];
+    
+    if (matches.length === 0) {
+      return [{ type: 'text', content: text }];
+    }
+    
+    let result = [];
     let currentPos = 0;
     
-    // Find all potential URL starts
-    const urlStartPattern = /https?:\/\//g;
-    let match;
-    
-    while ((match = urlStartPattern.exec(text)) !== null) {
+    for (const match of matches) {
       const startIndex = match.index;
       
       // Add text before URL
@@ -370,6 +455,13 @@ function Chatbot() {
 
   const clearConversation = async () => {
     if (window.confirm('Are you sure you want to clear the conversation?')) {
+      // Track conversation cleared
+      posthog.capture('chatbot_conversation_cleared', {
+        message_count: messages.length,
+        session_id: sessionId,
+        timestamp: new Date().toISOString()
+      });
+      
       setMessages([{
         type: 'assistant',
         text: 'Conversation cleared. How can I help you today?'
@@ -446,6 +538,22 @@ function Chatbot() {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Suggestions - always show 3 */}
+      {suggestions.length > 0 && messages.length <= 2 && (
+        <div className="suggestions">
+          {suggestions.map((suggestion, index) => (
+            <button 
+              key={index}
+              onClick={() => handleSuggestionClick(suggestion)}
+              className="suggestion-chip"
+              disabled={isLoading}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Image preview */}
       {imagePreview && !showCamera && (
