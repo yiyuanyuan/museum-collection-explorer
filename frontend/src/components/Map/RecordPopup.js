@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import posthog from 'posthog-js';
 
 function RecordPopup({ records }) {
   // Handle both single record and array of records
@@ -9,10 +10,39 @@ function RecordPopup({ records }) {
   const [slideDirection, setSlideDirection] = useState('right'); // 'left' or 'right'
   const [hasTransitioned, setHasTransitioned] = useState(false); // Track if we've transitioned at least once
   const autoScrollTimerRef = useRef(null);
+  const recordViewStartTimeRef = useRef(Date.now());
   
   const currentRecord = recordsArray[currentIndex];
   const totalRecords = recordsArray.length;
   const hasMultipleRecords = totalRecords > 1;
+  
+  // Track when individual record is viewed
+  useEffect(() => {
+    if (currentRecord) {
+      recordViewStartTimeRef.current = Date.now();
+      
+      posthog.capture('popup_record_viewed', {
+        scientific_name: currentRecord.scientificName,
+        common_name: currentRecord.commonName,
+        catalogue_number: currentRecord.catalogueNumber,
+        institution: currentRecord.institutionName,
+        collection: currentRecord.collectionName,
+        state: currentRecord.stateProvince,
+        locality: currentRecord.locality,
+        has_image: !!(currentRecord.thumbnailUrl || currentRecord.imageUrl || currentRecord.largeImageUrl),
+        event_date: currentRecord.eventDate,
+        recorded_by: currentRecord.recordedBy,
+        location: {
+          lat: currentRecord.latitude,
+          lng: currentRecord.longitude
+        },
+        record_position: currentIndex + 1,
+        total_records_at_location: totalRecords,
+        navigation_method: autoScrollEnabled ? 'auto_scroll' : 'manual',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [currentIndex, currentRecord, totalRecords, autoScrollEnabled]);
   
   // Auto-scroll functionality
   useEffect(() => {
@@ -37,9 +67,28 @@ function RecordPopup({ records }) {
     setAutoScrollEnabled(true);
     setSlideDirection('right');
     setHasTransitioned(false); // Reset transition flag for new location
+    recordViewStartTimeRef.current = Date.now();
   }, [recordsArray]);
   
   const goToNext = () => {
+    // Calculate time spent viewing current record
+    const timeViewing = (Date.now() - recordViewStartTimeRef.current) / 1000;
+    
+    // Track navigation
+    posthog.capture('popup_carousel_navigated', {
+      direction: 'next',
+      from_index: currentIndex,
+      to_index: (currentIndex + 1) % totalRecords,
+      total_records: totalRecords,
+      time_viewing_previous_record_seconds: timeViewing,
+      current_record: {
+        scientific_name: currentRecord.scientificName,
+        catalogue_number: currentRecord.catalogueNumber
+      },
+      navigation_method: 'manual_button',
+      timestamp: new Date().toISOString()
+    });
+    
     setAutoScrollEnabled(false); // Stop auto-scroll on user interaction
     setSlideDirection('right');
     setHasTransitioned(true);
@@ -47,6 +96,24 @@ function RecordPopup({ records }) {
   };
   
   const goToPrevious = () => {
+    // Calculate time spent viewing current record
+    const timeViewing = (Date.now() - recordViewStartTimeRef.current) / 1000;
+    
+    // Track navigation
+    posthog.capture('popup_carousel_navigated', {
+      direction: 'previous',
+      from_index: currentIndex,
+      to_index: (currentIndex - 1 + totalRecords) % totalRecords,
+      total_records: totalRecords,
+      time_viewing_previous_record_seconds: timeViewing,
+      current_record: {
+        scientific_name: currentRecord.scientificName,
+        catalogue_number: currentRecord.catalogueNumber
+      },
+      navigation_method: 'manual_button',
+      timestamp: new Date().toISOString()
+    });
+    
     setAutoScrollEnabled(false); // Stop auto-scroll on user interaction
     setSlideDirection('left');
     setHasTransitioned(true);
@@ -54,6 +121,21 @@ function RecordPopup({ records }) {
   };
   
   const handleClose = () => {
+    // Calculate time spent viewing current record
+    const timeViewing = (Date.now() - recordViewStartTimeRef.current) / 1000;
+    
+    // Track popup close button click
+    posthog.capture('popup_close_button_clicked', {
+      current_record_index: currentIndex,
+      total_records: totalRecords,
+      time_viewing_last_record_seconds: timeViewing,
+      current_record: {
+        scientific_name: currentRecord.scientificName,
+        catalogue_number: currentRecord.catalogueNumber
+      },
+      timestamp: new Date().toISOString()
+    });
+    
     // Close the popup by finding and clicking the leaflet close button
     const closeButton = document.querySelector('.leaflet-popup-close-button');
     if (closeButton) {

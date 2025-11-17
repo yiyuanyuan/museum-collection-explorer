@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import './MapView.css';
 import RecordPopup from './RecordPopup';
 import FilterPanel from '../Filters/FilterPanel';
+import posthog from 'posthog-js';
 
 // Fix for default markers in React-Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -47,6 +48,7 @@ function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPa
   const map = useMap();
   const [hasInitialized, setHasInitialized] = useState(false);
   const userInteractionRef = useRef(false);
+  const previousZoomRef = useRef(null);
   
   const getVisibleBounds = () => {
     const container = map.getContainer();
@@ -76,6 +78,23 @@ function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPa
       if (!isPopupOpen || userInteractionRef.current) {
         const bounds = getVisibleBounds();
         onBoundsChange(bounds);
+        
+        // Track map pan
+        const center = map.getCenter();
+        posthog.capture('map_panned', {
+          center: {
+            lat: center.lat,
+            lng: center.lng
+          },
+          bounds: {
+            north: bounds.north,
+            south: bounds.south,
+            east: bounds.east,
+            west: bounds.west
+          },
+          zoom_level: map.getZoom(),
+          timestamp: new Date().toISOString()
+        });
       }
       userInteractionRef.current = false;
     },
@@ -86,11 +105,35 @@ function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPa
           onUserInteraction();
         }
       }
+      previousZoomRef.current = map.getZoom();
     },
     zoomend: () => {
+      const currentZoom = map.getZoom();
+      const previousZoom = previousZoomRef.current;
+      
       if (!isPopupOpen || userInteractionRef.current) {
         const bounds = getVisibleBounds();
         onBoundsChange(bounds);
+        
+        // Track map zoom
+        const center = map.getCenter();
+        posthog.capture('map_zoomed', {
+          zoom_level: currentZoom,
+          previous_zoom: previousZoom,
+          zoom_direction: currentZoom > previousZoom ? 'in' : 'out',
+          zoom_delta: currentZoom - previousZoom,
+          center: {
+            lat: center.lat,
+            lng: center.lng
+          },
+          bounds: {
+            north: bounds.north,
+            south: bounds.south,
+            east: bounds.east,
+            west: bounds.west
+          },
+          timestamp: new Date().toISOString()
+        });
       }
       userInteractionRef.current = false;
     }
@@ -102,6 +145,23 @@ function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPa
         const bounds = getVisibleBounds();
         onBoundsChange(bounds);
         setHasInitialized(true);
+        
+        // Track initial map load
+        const center = map.getCenter();
+        posthog.capture('map_loaded', {
+          initial_center: {
+            lat: center.lat,
+            lng: center.lng
+          },
+          initial_zoom: map.getZoom(),
+          initial_bounds: {
+            north: bounds.north,
+            south: bounds.south,
+            east: bounds.east,
+            west: bounds.west
+          },
+          timestamp: new Date().toISOString()
+        });
       }, 100);
     }
   }, [hasInitialized, map, onBoundsChange]);
@@ -111,6 +171,14 @@ function ViewportManager({ onBoundsChange, selectedRegion, isPopupOpen, isAutoPa
       map.flyTo(selectedRegion.coordinates, selectedRegion.zoom, {
         duration: 1.5,
         easeLinearity: 0.5
+      });
+      
+      // Track region selection
+      posthog.capture('map_region_selected', {
+        region: selectedRegion.name || 'unknown',
+        target_coordinates: selectedRegion.coordinates,
+        target_zoom: selectedRegion.zoom,
+        timestamp: new Date().toISOString()
       });
     }
   }, [selectedRegion, map]);
@@ -139,6 +207,7 @@ function MapView({
   const mapRef = useRef(null);
   const markerRefs = useRef({});
   const reopenAttempted = useRef(false);
+  const popupOpenTimeRef = useRef(null);
   
   // Group occurrences by location (same lat/lng)
   const groupedOccurrences = React.useMemo(() => {
@@ -203,6 +272,7 @@ function MapView({
       
       const handlePopupOpen = (e) => {
         setIsPopupOpen(true);
+        popupOpenTimeRef.current = Date.now();
         
         const latlng = e.popup._latlng;
         const lat = latlng.lat.toFixed(6);
@@ -216,6 +286,38 @@ function MapView({
             lng: lng,
             recordIds: group.records.map(r => r.id)
           };
+          
+          // Track popup opened with all specimen details
+          const currentZoom = map.getZoom();
+          const center = map.getCenter();
+          
+          posthog.capture('map_popup_opened', {
+            location: {
+              lat: parseFloat(lat),
+              lng: parseFloat(lng)
+            },
+            record_count: group.records.length,
+            records: group.records.map(record => ({
+              scientific_name: record.scientificName,
+              common_name: record.commonName,
+              catalogue_number: record.catalogueNumber,
+              institution: record.institutionName,
+              collection: record.collectionName,
+              state: record.stateProvince,
+              locality: record.locality,
+              has_image: !!(record.thumbnailUrl || record.imageUrl || record.largeImageUrl),
+              event_date: record.eventDate,
+              recorded_by: record.recordedBy
+            })),
+            map_state: {
+              zoom_level: currentZoom,
+              center: {
+                lat: center.lat,
+                lng: center.lng
+              }
+            },
+            timestamp: new Date().toISOString()
+          });
         }
         
         isAutoPanning.current = true;
@@ -225,10 +327,34 @@ function MapView({
       };
       
       const handlePopupClose = () => {
+        // Calculate time popup was open
+        const timeOpen = popupOpenTimeRef.current 
+          ? (Date.now() - popupOpenTimeRef.current) / 1000 
+          : 0;
+        
+        if (openPopupInfo.current) {
+          const { lat, lng } = openPopupInfo.current;
+          const group = groupedOccurrences.find(g => g.key === `${lat},${lng}`);
+          
+          if (group) {
+            // Track popup closed
+            posthog.capture('map_popup_closed', {
+              location: {
+                lat: parseFloat(lat),
+                lng: parseFloat(lng)
+              },
+              record_count: group.records.length,
+              time_open_seconds: timeOpen,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+        
         setIsPopupOpen(false);
         openPopupInfo.current = null;
         reopenAttempted.current = false;
         isAutoPanning.current = false;
+        popupOpenTimeRef.current = null;
       };
       
       map.on('popupopen', handlePopupOpen);
@@ -256,6 +382,13 @@ function MapView({
   const toggleImageFilter = () => {
     const newValue = !showOnlyWithImages;
     setShowOnlyWithImages(newValue);
+    
+    // Track image filter toggle
+    posthog.capture('map_image_filter_toggled', {
+      filter_enabled: newValue,
+      timestamp: new Date().toISOString()
+    });
+    
     if (mapRef.current) {
       const map = mapRef.current;
       const bounds = map.getBounds();
@@ -269,7 +402,14 @@ function MapView({
   };
   
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    const newValue = !isFullscreen;
+    setIsFullscreen(newValue);
+    
+    // Track fullscreen toggle
+    posthog.capture('map_fullscreen_toggled', {
+      fullscreen_enabled: newValue,
+      timestamp: new Date().toISOString()
+    });
   };
   
   return (
@@ -325,6 +465,20 @@ function MapView({
                 ref={(ref) => {
                   if (ref) {
                     markerRefs.current[markerKey] = ref;
+                  }
+                }}
+                eventHandlers={{
+                  click: () => {
+                    // Track marker click
+                    posthog.capture('map_marker_clicked', {
+                      location: {
+                        lat: group.latitude,
+                        lng: group.longitude
+                      },
+                      record_count: group.records.length,
+                      has_multiple_records: group.records.length > 1,
+                      timestamp: new Date().toISOString()
+                    });
                   }
                 }}
               >
