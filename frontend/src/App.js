@@ -4,6 +4,7 @@ import Header from './components/Layout/Header';
 import MapView from './components/Map/MapView';
 import Chatbot from './components/Chatbot/Chatbot';
 import { fetchOccurrences } from './services/biocache';
+import posthog from 'posthog-js';
 
 function App() {
   const [occurrences, setOccurrences] = useState([]);
@@ -23,6 +24,66 @@ function App() {
   const touchStartY = useRef(null);
   const touchStartTime = useRef(null);
   const drawerRef = useRef(null);
+
+  // Initialize PostHog
+  useEffect(() => {
+    // Initialize PostHog if not already initialized
+    if (!posthog.__loaded) {
+      posthog.init(process.env.REACT_APP_POSTHOG_API_KEY, {
+        api_host: process.env.REACT_APP_POSTHOG_HOST || 'https://app.posthog.com',
+        loaded: (posthog) => {
+          if (process.env.NODE_ENV === 'development') {
+            posthog.debug();
+          }
+        }
+      });
+    }
+  }, []);
+
+  // Function to generate survey URL with PostHog data
+  const getSurveyUrl = () => {
+    const baseUrl = 'https://qualtricsxmv4ln2spch.qualtrics.com/jfe/form/SV_bmvLUlly98nRlOu';
+    
+    try {
+      // Get PostHog user ID (distinct_id)
+      const userId = posthog.get_distinct_id();
+      
+      // Get PostHog session ID
+      const sessionId = posthog.get_session_id();
+      
+      // Build URL with parameters
+      const params = new URLSearchParams();
+      if (userId) {
+        params.append('posthog_user_id', userId);
+      }
+      if (sessionId) {
+        params.append('posthog_session_id', sessionId);
+      }
+      
+      const urlWithParams = `${baseUrl}?${params.toString()}`;
+      console.log('Survey URL with PostHog data:', urlWithParams);
+      
+      return urlWithParams;
+    } catch (error) {
+      console.error('Error getting PostHog data:', error);
+      // Return base URL if there's an error
+      return baseUrl;
+    }
+  };
+
+  // Function to handle survey button click
+  const handleSurveyClick = () => {
+    const surveyUrl = getSurveyUrl();
+    
+    // Track the event in PostHog
+    posthog.capture('survey_opened', {
+      survey_url: surveyUrl,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Open survey in new tab
+    window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+  };
 
   const loadViewportData = async (bounds, showOnlyWithImages = true) => {
     setLoading(true);
@@ -345,14 +406,12 @@ function App() {
           <div className="survey-content">
             <button className="survey-close" onClick={toggleSurvey}>✕</button>
             <div className="survey-text">We would appreciate it if you could fill out this survey after interacting with the application.</div>
-            <a 
-              href="https://qualtricsxmv4ln2spch.qualtrics.com/jfe/form/SV_bmvLUlly98nRlOu" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <button 
+              onClick={handleSurveyClick}
               className="survey-button"
             >
               📋 Take Survey
-            </a>
+            </button>
           </div>
         </div>
       </div>
