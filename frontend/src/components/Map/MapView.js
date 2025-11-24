@@ -259,35 +259,38 @@ function MapView({
           openPopupInfo.current = null;
           reopenAttempted.current = false;
         }
-      } else {
-        openPopupInfo.current = null;
-        reopenAttempted.current = false;
       }
     }
   }, [groupedOccurrences]);
   
   useEffect(() => {
-    if (mapRef.current) {
-      const map = mapRef.current;
-      
+    const map = mapRef.current;
+    if (!map) return;
+    
+    if (isPopupOpen) {
+      map.dragging.disable();
+      map.scrollWheelZoom.disable();
+    } else {
+      map.dragging.enable();
+      map.scrollWheelZoom.enable();
+    }
+    
+    if (map) {
       const handlePopupOpen = (e) => {
-        setIsPopupOpen(true);
-        popupOpenTimeRef.current = Date.now();
+        const { lat, lng } = e.popup._latlng;
+        const markerKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+        const group = groupedOccurrences.find(g => g.key === markerKey);
         
-        const latlng = e.popup._latlng;
-        const lat = latlng.lat.toFixed(6);
-        const lng = latlng.lng.toFixed(6);
-        const key = `${lat},${lng}`;
-        
-        const group = groupedOccurrences.find(g => g.key === key);
         if (group) {
           openPopupInfo.current = {
-            lat: lat,
-            lng: lng,
+            lat: lat.toFixed(6),
+            lng: lng.toFixed(6),
             recordIds: group.records.map(r => r.id)
           };
+          setIsPopupOpen(true);
+          popupOpenTimeRef.current = Date.now();
           
-          // Track popup opened with all specimen details
+          // Track popup opened
           const currentZoom = map.getZoom();
           const center = map.getCenter();
           
@@ -520,27 +523,34 @@ function MapView({
       </div>
       
       <div className="map-footer">
-        <div className="data-source">
-          <span className="source-label">Data Source:</span>
-          <span className="source-name">ALA Biocache</span>
-        </div>
-        <div className="data-stats">
-          {loading ? (
-            <span className="stats-loading">Updating...</span>
-          ) : occurrences.length > 0 ? (
-            <>
-              <span className="stats-showing">
-                Showing <strong>{occurrences.length.toLocaleString()}</strong>
-              </span>
-              {totalInViewport > occurrences.length && (
-                <span className="stats-total">
-                  of <strong>{totalInViewport.toLocaleString()}</strong> specimens
+        <div className="footer-row">
+          <div className="data-source">
+            <span className="source-label">Data Source:</span>
+            <span className="source-name">Atlas of Living Australia</span>
+          </div>
+          <div className="data-stats">
+            {loading ? (
+              <span className="stats-loading">Updating...</span>
+            ) : occurrences.length > 0 ? (
+              <>
+                <span className="stats-showing">
+                  Showing <strong>{occurrences.length.toLocaleString()}</strong>
                 </span>
-              )}
-            </>
-          ) : (
-            <span className="stats-empty">No specimens in current view</span>
-          )}
+                {totalInViewport > occurrences.length && (
+                  <span className="stats-total">
+                    of <strong>{totalInViewport.toLocaleString()}</strong> specimens
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="stats-empty">No specimens in current view</span>
+            )}
+          </div>
+        </div>
+        <div className="footer-note">
+          <p className="note-text">
+            Note: This prototype displays only a portion of the Australian Museum's digitised specimen collections, and information on some records might be incomplete.
+          </p>
         </div>
       </div>
     </div>

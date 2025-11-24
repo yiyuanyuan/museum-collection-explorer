@@ -7,7 +7,7 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  height: 60px;
+  height: 70px;
 }
 
 .header-content {
@@ -22,10 +22,14 @@
 
 .logo {
   display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.logo-main {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 500;
-  font-size: 1rem;
 }
 
 .logo-icon {
@@ -37,6 +41,16 @@
 .logo-text {
   color: #333;
   letter-spacing: 0.05em;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.logo-subtitle {
+  color: #666;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  padding-left: 28px;
 }
 
 .nav {

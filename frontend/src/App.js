@@ -288,7 +288,7 @@ function App() {
         />
         <div className="landing-page">
           <div className="landing-content">
-            <div className="museum-label">AUSTRALIAN MUSEUM</div>
+            <div className="museum-label">UNIVERSITY OF TECHNOLOGY SYDNEY X AUSTRALIAN MUSEUM</div>
             <h1 className="main-title">COLLECTION EXPLORER</h1>
             <div className="landing-nav">
               <span className="nav-item">Digitised Specimen Records on Map</span>
@@ -326,6 +326,11 @@ function App() {
                 >
                   Participant Information Statement and Consent Form
                 </a>
+              </div>
+              <div className="consent-note-row">
+                <p className="consent-note-text">
+                  Note: This is a research prototype developed by researchers from the UTS Visualisation Institute. It uses digitised life-science specimen data from the Australian Museum, hosted on the Atlas of Living Australia (the OZCAM dataset). The data represents only a portion of the Museum's digitised life-science collections.
+                </p>
               </div>
             </div>
           </div>
