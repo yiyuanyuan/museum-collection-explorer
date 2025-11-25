@@ -181,19 +181,20 @@ class BiocacheService:
         sys.stdout.flush()
         
         # Build the ALA URL for user reference
-        # ala_url = self.build_ala_url(filters, bounds)
+        ala_url = self.build_ala_url(filters, bounds)
         
-        result = {
+        return {
             'occurrences': processed_occurrences,
             'totalRecords': total_records,
-            'facets': self._process_facets(data.get('facetResults', []))
+            'facets': self._process_facets(data.get('facetResults', [])),
+            'ala_url': ala_url
         }
 
         # Only include ala_url if there are actual records
-        if total_records > 0:
-            result['ala_url'] = self.build_ala_url(filters, bounds)
+        #if total_records > 0:
+            #result['ala_url'] = self.build_ala_url(filters, bounds)
 
-        return result
+        #return result
     
     def determine_taxonomic_rank(self, name: str) -> str:
         """
