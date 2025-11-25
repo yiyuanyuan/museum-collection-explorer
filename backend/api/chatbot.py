@@ -33,6 +33,7 @@ class ChatbotService:
 2. Call the appropriate function to get the data.
 3. Provide a clear, natural language answer.
 4. When users ask casually about an animal (e.g., "frogs", "christmas beetles"), provide general facts about the animal or naturally connect to relevant species in the museum collection, based on the user's intent.
+5. When users ask questions unrelated to life science or the museum collection, answer briefly (1-2 sentences) and politely indicate you're specialised in life-science specimen collections from the Australian Museum.
 
 ## Available Functions
 
@@ -66,6 +67,7 @@ When calling search_specimens or get_specimen_statistics:
 - Don't follow up with more questions or offer follow-up options to the user.
 - When the user asks for images of a species, show up to five images.
 - When discussing specific species or specimens, show images from the API response when they're present (up to 5 images).
+- Use British English spelling (e.g., "specialised", "colour", "catalogue").
 
 ## Example
 
@@ -255,6 +257,46 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
                 {"role": "system", "content": self.system_prompt}
             ]
         return self.conversations[session_id]
+
+    def _trim_conversation_history(self, conversation: List[Dict]) -> List[Dict]:
+        """
+        Trim conversation history while preserving tool_calls/tool/assistant sequences
+        """
+        if len(conversation) <= self.max_history_length:
+            return conversation
+        
+        # Always keep system prompt
+        trimmed = [conversation[0]]
+        
+        # Get messages to consider (everything except system prompt)
+        messages = conversation[1:]
+        
+        # Work backwards to find safe cutoff point
+        keep_from_index = len(messages) - (self.max_history_length - 1)
+        
+        # Scan backwards from cutoff to find a safe boundary
+        # Safe boundary = right after an assistant message (not tool_calls)
+        for i in range(keep_from_index, -1, -1):
+            msg = messages[i]
+            
+            # Safe to cut after a complete assistant response (no tool_calls)
+            if msg.get('role') == 'assistant' and not msg.get('tool_calls'):
+                trimmed.extend(messages[i+1:])
+                print(f"[ChatbotService] Trimmed conversation from index {i+1}, keeping {len(trimmed)} messages")
+                return trimmed
+            
+            # Also safe to cut after a user message (start of a turn)
+            if msg.get('role') == 'user' and i > 0:
+                # Check if previous message is a complete assistant response
+                prev = messages[i-1]
+                if prev.get('role') == 'assistant' and not prev.get('tool_calls'):
+                    trimmed.extend(messages[i:])
+                    print(f"[ChatbotService] Trimmed conversation from index {i}, keeping {len(trimmed)} messages")
+                    return trimmed
+        
+        # Fallback: keep everything (don't risk breaking structure)
+        print(f"[ChatbotService] WARNING: Could not find safe trim point, keeping all messages")
+        return conversation
 
     def execute_function(self, function_name: str, arguments: Dict) -> Dict:
         """Execute function with fallback logic for name conversion (RULE 3)"""
@@ -793,9 +835,12 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
             
             conversation.append(user_message)
             
-            if len(conversation) > self.max_history_length:
-                conversation = [conversation[0]] + conversation[-(self.max_history_length-1):]
-                self.conversations[session_id] = conversation
+            #if len(conversation) > self.max_history_length:
+                #conversation = [conversation[0]] + conversation[-(self.max_history_length-1):]
+                #self.conversations[session_id] = conversation
+            
+            conversation = self._trim_conversation_history(conversation)
+            self.conversations[session_id] = conversation
             
             response = self.client.chat.completions.create(
                 model=self.model,
