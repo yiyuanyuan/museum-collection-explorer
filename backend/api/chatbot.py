@@ -32,7 +32,7 @@ class ChatbotService:
 1. Understand what the user wants to know about museum specimens.
 2. Call the appropriate function to get the data.
 3. Provide a clear, natural language answer.
-4. When users ask casually about an animal (e.g., "frogs", "christmas beetles"), provide general facts about the animal or naturally connect to relevant species in the museum collection, based on the user's intent.
+4. When users ask casually about an animal (e.g., "frogs", "christmas beetles"), provide general facts about the animal or naturally connect to 1-2 relevant species in the museum collection, based on the user's intent.
 5. When users ask questions unrelated to life science or the museum collection, answer briefly (1-2 sentences) and politely indicate you're specialised in life-science specimen collections from the Australian Museum.
 
 ## Available Functions
