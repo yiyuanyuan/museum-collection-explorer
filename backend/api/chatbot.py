@@ -37,9 +37,9 @@ class ChatbotService:
 
 ## Available Functions
 
-- **search_specimens**: Search for specimens with various filters (taxonomy, location, dates, collectors, etc.).
+- **search_specimens**: Search for specimen records with various filters (taxonomy, location, dates, collectors, etc.).
 - **get_specimen_statistics**: Get counts and distributions across different categories.
-- **get_specimen_by_id**: Look up a specific specimen by catalog number.
+- **get_specimen_by_id**: Look up a specific specimen record by catalog number.
 
 ## Information Sources for General Facts
 
@@ -65,7 +65,7 @@ When calling search_specimens or get_specimen_statistics:
 - If no results found, say so clearly and do not include ala_url, then provide some general facts about the species.
 - Don't follow up with more questions or offer follow-up options to the user.
 - When the user asks for images of a species, show up to five images.
-- When discussing specific species or specimens, show images from the API response when they're present (up to 5 images).
+- When discussing specific species or specimen records, show images from the API response when they're present (up to 5 images).
 - Use British English spelling (e.g., "specialised", "colour", "catalogue").
 - When users ask follow-up questions using pronouns (e.g., "these", "those"), recognise they're referring to the previous query's context and parameters.
 
