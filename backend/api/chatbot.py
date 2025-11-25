@@ -62,7 +62,6 @@ When calling search_specimens or get_specimen_statistics:
 - When discussing collection records, provide ACTUAL numbers from API data only and NEVER invent or estimate statistics.
 - For casual animal questions, provide general facts first, then connect to collection data IF RELEVANT.
 - ALWAYS include the ala_url after retrieving specimen search results, unless the search returned 0 records.
-- NEVER show or narrate your internal processing, such as JSON, function calls, and your action steps, to the user.
 - If no results found, say so clearly and do not include ala_url, then provide some general facts about the species.
 - Don't follow up with more questions or offer follow-up options to the user.
 - When the user asks for images of a species, show up to five images.
@@ -87,6 +86,7 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
 - Include the ala_url at the end.
 
 """
+# - NEVER show or narrate your internal processing, such as JSON, function calls, and your action steps, to the user.
 
         # Comprehensive tool definitions
         self.tools = [
