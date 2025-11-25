@@ -71,23 +71,32 @@ class ResponseCleaner:
         
         # Remove entire sentences that describe the search process
         
-        # "I'll [action]..." sentences
-        text = re.sub(r'I\'ll\s+(search|check|query|look|get|retrieve|find|call)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
+        # "I'll [action]..." sentences (all variations)
+        text = re.sub(r'I\'ll\s+(search|check|query|look|get|retrieve|find|call|fetch|access|contact|pull|grab)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
         
-        # "I'm [action]..." sentences  
-        text = re.sub(r'I\'m\s+(searching|checking|querying|looking|getting|retrieving|finding|calling)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
+        # "I'm [action]..." sentences (all variations)
+        text = re.sub(r'I\'m\s+(searching|checking|querying|looking|getting|retrieving|finding|calling|fetching|accessing|contacting|pulling|grabbing)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
         
-        # "Searching/Querying..." sentences
-        text = re.sub(r'(Searching|Querying|Checking|Looking|Getting|Retrieving|Finding)[^\n]*[\.\n]', '', text, flags=re.IGNORECASE)
+        # "Let me [action]..." sentences
+        text = re.sub(r'Let\s+me\s+(search|check|query|look|get|retrieve|find|call|fetch|access)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
+        
+        # "[Action]ing..." sentences (Searching, Querying, Calling, etc.)
+        text = re.sub(r'(Searching|Querying|Checking|Looking|Getting|Retrieving|Finding|Calling|Fetching|Accessing|Contacting|Attempting|Proceeding)[^\n]*[\.\n]', '', text, flags=re.IGNORECASE)
         
         # "Done/Finished..." sentences
         text = re.sub(r'(Done|Finished)[^\n]*[\.\n]', '', text, flags=re.IGNORECASE)
+        
+        # Conditional process statements: "If I can [action]..."
+        text = re.sub(r'If\s+I\s+can\s+(retrieve|get|find|access|fetch|pull)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
         
         # Notes in parentheses
         text = re.sub(r'\(Note:.*?\)[\.\n]?', '', text, flags=re.IGNORECASE | re.DOTALL)
         
         # "Calling function..." sentences
-        text = re.sub(r'Calling\s+(function|the\s+function)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'Calling\s+(function|the\s+function|the\s+[A-Z][a-z]+\s+[A-Z][a-z]+)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
+        
+        # Specific pattern: "Calling the Australian Museum collection..."
+        text = re.sub(r'Calling\s+the\s+Australian\s+Museum[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
         
         # Simulation notices
         text = re.sub(r'\(this\s+is\s+simulated\)[\.\n]?', '', text, flags=re.IGNORECASE)
@@ -100,6 +109,12 @@ class ResponseCleaner:
         
         # Multi-line search descriptions
         text = re.sub(r'I\'ll[^\.]+\.+\s*Searching[^\n]*\n?', '', text, flags=re.IGNORECASE)
+        
+        # Remove "in case" conditional statements that describe process
+        text = re.sub(r'in\s+case\s+records?\s+(are|is)[^\n\.]+[\.\n]?', '', text, flags=re.IGNORECASE)
+        
+        # Remove phrases about retrieving/showing links
+        text = re.sub(r'(I\'ll\s+share\s+the\s+link|to\s+retrieve\s+the[^\n\.]+link)[^\n\.]*[\.\n]?', '', text, flags=re.IGNORECASE)
         
         return text
     
