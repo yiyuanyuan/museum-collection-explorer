@@ -68,7 +68,7 @@ When calling search_specimens or get_specimen_statistics:
 - When the user asks for images of a species, show up to five images.
 - When discussing specific species or specimens, show images from the API response when they're present (up to 5 images).
 - Use British English spelling (e.g., "specialised", "colour", "catalogue").
-- When users ask follow-up questions using pronouns (e.g., "these records", "those specimens"), recognise they're referring to the previous query's context and parameters.
+- When users ask follow-up questions using pronouns (e.g., "these", "those"), recognise they're referring to the previous query's context and parameters.
 
 ## Example
 
