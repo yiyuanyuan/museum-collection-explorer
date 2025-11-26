@@ -20,7 +20,7 @@ class ChatbotService:
         self.biocache_service = BiocacheService()
         self.response_cleaner = ResponseCleaner()
         
-        self.model = "gpt-5"
+        self.model = "gpt-5-nano"
         self.conversations = {}
         self.max_history_length = 20
         
