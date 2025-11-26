@@ -259,74 +259,90 @@ function MapView({
           openPopupInfo.current = null;
           reopenAttempted.current = false;
         }
+      } else {
+        openPopupInfo.current = null;
+        reopenAttempted.current = false;
       }
     }
   }, [groupedOccurrences]);
   
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    
-    if (isPopupOpen) {
-      map.dragging.disable();
-      map.scrollWheelZoom.disable();
-    } else {
-      map.dragging.enable();
-      map.scrollWheelZoom.enable();
-    }
-    
-    if (map) {
+    if (mapRef.current) {
+      const map = mapRef.current;
+      
       const handlePopupOpen = (e) => {
-        const { lat, lng } = e.popup._latlng;
-        const markerKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-        const group = groupedOccurrences.find(g => g.key === markerKey);
-        
-        if (group) {
-          openPopupInfo.current = {
-            lat: lat.toFixed(6),
-            lng: lng.toFixed(6),
-            recordIds: group.records.map(r => r.id)
-          };
-          setIsPopupOpen(true);
-          popupOpenTimeRef.current = Date.now();
+        if (e.popup) {
+          const marker = e.popup._source;
+          if (marker && marker.getLatLng) {
+            const position = marker.getLatLng();
+            const recordIds = groupedOccurrences
+              .find(g => Math.abs(g.latitude - position.lat) < 0.000001 && Math.abs(g.longitude - position.lng) < 0.000001)
+              ?.records.map(r => r.id) || [];
+            
+            openPopupInfo.current = {
+              lat: position.lat.toFixed(6),
+              lng: position.lng.toFixed(6),
+              recordIds: recordIds
+            };
+            
+            setIsPopupOpen(true);
+            popupOpenTimeRef.current = Date.now();
+          }
           
           // Track popup opened
-          const currentZoom = map.getZoom();
-          const center = map.getCenter();
+          const position = e.popup.getLatLng();
+          const group = groupedOccurrences.find(g => 
+            Math.abs(g.latitude - position.lat) < 0.000001 && 
+            Math.abs(g.longitude - position.lng) < 0.000001
+          );
           
-          posthog.capture('map_popup_opened', {
-            location: {
-              lat: parseFloat(lat),
-              lng: parseFloat(lng)
-            },
-            record_count: group.records.length,
-            records: group.records.map(record => ({
-              scientific_name: record.scientificName,
-              common_name: record.commonName,
-              catalogue_number: record.catalogueNumber,
-              institution: record.institutionName,
-              collection: record.collectionName,
-              state: record.stateProvince,
-              locality: record.locality,
-              has_image: !!(record.thumbnailUrl || record.imageUrl || record.largeImageUrl),
-              event_date: record.eventDate,
-              recorded_by: record.recordedBy
-            })),
-            map_state: {
-              zoom_level: currentZoom,
-              center: {
-                lat: center.lat,
-                lng: center.lng
-              }
-            },
-            timestamp: new Date().toISOString()
-          });
+          if (group) {
+            const currentZoom = map.getZoom();
+            const center = map.getCenter();
+            
+            posthog.capture('map_popup_opened', {
+              location: {
+                lat: position.lat,
+                lng: position.lng
+              },
+              record_count: group.records.length,
+              has_multiple_records: group.records.length > 1,
+              records: group.records.map(record => ({
+                scientific_name: record.scientificName,
+                common_name: record.commonName,
+                catalogue_number: record.catalogueNumber,
+                institution: record.institutionName,
+                collection: record.collectionName,
+                state: record.stateProvince,
+                locality: record.locality,
+                has_image: !!(record.thumbnailUrl || record.imageUrl || record.largeImageUrl),
+                event_date: record.eventDate,
+                recorded_by: record.recordedBy
+              })),
+              map_state: {
+                zoom_level: currentZoom,
+                center: {
+                  lat: center.lat,
+                  lng: center.lng
+                }
+              },
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          isAutoPanning.current = true;
+          
+          // CRITICAL FIX: Ensure dragging is re-enabled after popup opens and autopans
+          // Wait for the autopan animation to complete, then explicitly enable dragging
+          setTimeout(() => {
+            isAutoPanning.current = false;
+            
+            // Explicitly enable map dragging after autopan completes
+            if (map.dragging && !map.dragging.enabled()) {
+              map.dragging.enable();
+            }
+          }, 600);
         }
-        
-        isAutoPanning.current = true;
-        setTimeout(() => {
-          isAutoPanning.current = false;
-        }, 600);
       };
       
       const handlePopupClose = () => {
@@ -358,14 +374,26 @@ function MapView({
         reopenAttempted.current = false;
         isAutoPanning.current = false;
         popupOpenTimeRef.current = null;
+        
+        // CRITICAL FIX: Ensure dragging is enabled when popup closes
+        if (map.dragging && !map.dragging.enabled()) {
+          map.dragging.enable();
+        }
+      };
+      
+      // CRITICAL FIX: Add autopanstart handler to track when autopan begins
+      const handleAutoPanStart = () => {
+        isAutoPanning.current = true;
       };
       
       map.on('popupopen', handlePopupOpen);
       map.on('popupclose', handlePopupClose);
+      map.on('autopanstart', handleAutoPanStart);
       
       return () => {
         map.off('popupopen', handlePopupOpen);
         map.off('popupclose', handlePopupClose);
+        map.off('autopanstart', handleAutoPanStart);
       };
     }
   }, [groupedOccurrences]);
@@ -419,9 +447,9 @@ function MapView({
     <div className={`map-view-container ${isFullscreen ? 'fullscreen' : ''}`}>
       <div className="map-header">
         <div className="header-content">
-          <h3 className="map-title">Specimen Map</h3>
+          <h3 className="map-title">Specimen Record Map</h3>
           <p className="map-subtitle">
-            Zoom in and click on markers to view specimens
+            Zoom in and click on markers to view specimen records
           </p>
         </div>
         <button 
@@ -442,6 +470,11 @@ function MapView({
           ref={mapRef}
           whenReady={(mapInstance) => {
             mapRef.current = mapInstance.target;
+            
+            // CRITICAL FIX: Ensure dragging is enabled on initial map load
+            if (mapInstance.target.dragging) {
+              mapInstance.target.dragging.enable();
+            }
           }}
         >
           <TileLayer

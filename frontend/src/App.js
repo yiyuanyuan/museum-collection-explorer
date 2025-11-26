@@ -329,7 +329,7 @@ function App() {
               </div>
               <div className="consent-note-row">
                 <p className="consent-note-text">
-                  Note: This is a research prototype developed by researchers from the UTS Visualisation Institute. It uses digitised life-science specimen data from the Australian Museum, hosted on the Atlas of Living Australia (the OZCAM dataset). The data represents only a portion of the Museum's digitised life-science collections.
+                  Note: This is a research prototype developed by researchers from the UTS Visualisation Institute. It uses digitised life-science specimen records of the Australian Museum, sourced via the Atlas of Living Australia (the OZCAM dataset), one of the Museum's largest external collaborators for data sharing. The data represents only a portion of the Museum's digitised life-science collections.
                 </p>
               </div>
             </div>
@@ -410,7 +410,7 @@ function App() {
           {/* Expanded content */}
           <div className="survey-content">
             <button className="survey-close" onClick={toggleSurvey}>✕</button>
-            <div className="survey-text">We would appreciate it if you could fill out this survey after interacting with the application.</div>
+            <div className="survey-text">Please fill out this research survey after you have used the prototype.</div>
             <button 
               onClick={handleSurveyClick}
               className="survey-button"

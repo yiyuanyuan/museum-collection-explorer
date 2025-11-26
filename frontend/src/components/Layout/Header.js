@@ -24,7 +24,7 @@ function Header({ currentView, hasConsented, onNavigateToExplore, onNavigateToHo
             </svg>
             <span className="logo-text">COLLECTION EXPLORER (Testing)</span>
           </div>
-          <span className="logo-subtitle">Using Australian Museum specimen data sourced through the Atlas of Living Australia</span>
+          <span className="logo-subtitle">Using Australian Museum specimen data sourced via the Atlas of Living Australia</span>
         </div>
         <nav className="nav">
           <a 

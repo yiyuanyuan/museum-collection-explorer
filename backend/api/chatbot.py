@@ -84,6 +84,7 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
 - For each species, provide: common name, scientific name, specimen count, and key locations.
 - Check the returned results for image URLs (imageUrl, largeImageUrl, thumbnailUrl) and display them when present (up to 5 images total).
 - Include the ala_url at the end.
+- Do not narrate your internal processing
 
 """
 # - NEVER show or narrate your internal processing, such as JSON, function calls, and your action steps, to the user.

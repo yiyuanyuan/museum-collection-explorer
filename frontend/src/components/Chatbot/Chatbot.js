@@ -7,8 +7,7 @@ function Chatbot() {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      text: 'Welcome to the Australian Museum Collection Explorer! I can help you learn about specimens in our collection and identify animals from photos. I can search specimens by scientific or common name, location, date, or catalog number. Try uploading an image or asking me a question!'
-    }
+      text: 'Welcome to the Australian Museum Collection Explorer! I can help you learn about specimens in our collection and identify animals from your photos. Try browsing the map and feel free to ask me anything about the specimen records. You can ask about scientific or common names, locations, dates, or catalog numbers.\n\nFor example:\n• What Malurus do you have?\n• How many Christmas Beetles do you have from NSW?\n• Show me some images of Dory.'    }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -474,7 +473,7 @@ function Chatbot() {
     <div className="chatbot-container">
       <div className="chatbot-header">
         <div className="header-content">
-          <h3 className="chatbot-title">AI Assistant</h3>
+          <h3 className="chatbot-title">AI Chat Assistant</h3>
           <p className="chatbot-subtitle">Ask questions or upload animal photos</p>
         </div>
         <button 
@@ -619,7 +618,7 @@ function Chatbot() {
         </button>
         <input
           type="text"
-          placeholder={selectedImage ? "Add a message about this image..." : "Ask me anything..."}
+          placeholder={selectedImage ? "Add a message about this image..." : "Ask me here..."}
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           onKeyPress={handleKeyPress}
@@ -634,6 +633,13 @@ function Chatbot() {
           {isLoading ? '...' : 'Send'}
         </button>
       </div>
+
+      <div className="chatbot-disclaimer">
+        <p className="disclaimer-text">
+          Note: While I've been tested carefully, I might sometimes make mistakes. I don't collect personal data, and you shouldn't share sensitive information. Please keep our chat respectful and on topic.
+        </p>
+      </div>
+
     </div>
   );
 }
