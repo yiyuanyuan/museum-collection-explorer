@@ -80,11 +80,11 @@ You: Call search_specimens with common_name="kangaroo" (matches any species with
 **Example 2:**
 User: "What frogs do you have?"
 You: Call search_specimens with common_name="frog" (matches any species with "frog" in the name), then:
-- Identify 1-3 diverse/representative species from the results.
+- Identify 1-2 representative species from the results.
 - For each species, provide: common name, scientific name, specimen count, and key locations.
 - Check the returned results for image URLs (imageUrl, largeImageUrl, thumbnailUrl) and display them when present (up to 5 images total).
 - Include the ala_url at the end.
-- Do not narrate your internal processing
+- Remove any internal processing from your response.
 
 """
 # - NEVER show or narrate your internal processing, such as JSON, function calls, and your action steps, to the user.

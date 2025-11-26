@@ -7,7 +7,7 @@ function Chatbot() {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      text: 'Welcome to the Australian Museum Collection Explorer! I can help you learn about specimens in our collection and identify animals from your photos. Try browsing the map and feel free to ask me anything about the specimen records. You can ask about scientific or common names, locations, dates, or catalog numbers.\n\nFor example:\n• What Malurus do you have?\n• How many Christmas Beetles do you have from NSW?\n• Show me some images of Dory.'    }
+      text: 'Welcome to Collection Explorer! I was developed by researchers from the University of Technology Sydney in collaboration with the Australian Museum Research Institute.\nI can help you learn about specimens in the Museum\'s life-science collection and identify animals from your photos. I can search by scientific or common names, locations, dates, or catalog numbers.\nTry browsing the map and feel free to ask me anything about the specimen records.\n\nFor example:\n• What Malurus do you have?\n• How many Christmas Beetles do you have from NSW?\n• Show me some images of Dory.'    }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [suggestions, setSuggestions] = useState([]);
