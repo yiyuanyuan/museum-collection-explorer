@@ -162,8 +162,12 @@ class BiocacheService:
             params['lon'] = lon
             if radius is not None:
                 params['radius'] = radius
+            print(f"[BiocacheService] ✓ Added spatial params to API request: lat={lat}, lon={lon}, radius={radius}")
+        else:
+            print(f"[BiocacheService] ⚠ No spatial params added (lat={lat}, lon={lon}, radius={radius})")
         
         print(f"[BiocacheService] Query filters: {fq}")
+        print(f"[BiocacheService] API params keys: {list(params.keys())}")
         
         response = requests.get(f"{self.base_url}/occurrences/search", params=params, timeout=60)
         response.raise_for_status()

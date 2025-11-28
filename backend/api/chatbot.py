@@ -538,9 +538,11 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
                         lon = geocoded['longitude']
                         radius = self.geocoding_service.get_search_radius_km(geocoded['place_type'])
                         
-                        # DON'T add state filter - let the radius search handle it
-                        # The spatial search is more precise than combining with state filter
-                        print(f"[ChatbotService] Using spatial search only (no state filter) for precision")
+                        # REMOVE state filter - spatial search is more precise
+                        # The state filter may interfere with lat/lon/radius search
+                        if 'state_province' in filters:
+                            print(f"[ChatbotService] Removing state filter to use spatial search only")
+                            del filters['state_province']
                 
                 elif len(geocoded_list) > 1:
                     # Multiple locations - search all and combine
@@ -645,7 +647,8 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
                 bounds=bounds,
                 lat=lat,
                 lon=lon,
-                radius=radius
+                radius=radius,
+                show_only_with_images=False  # Always include specimens without images
             )
         
         # DEBUG: Check what we got back
