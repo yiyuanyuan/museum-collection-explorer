@@ -17,7 +17,7 @@ class BiocacheService:
                           lat: Optional[float] = None,
                           lon: Optional[float] = None,
                           radius: Optional[float] = None,
-                          show_only_with_images: bool = True) -> Dict:
+                          show_only_with_images: bool = False) -> Dict:
         """
         Enhanced search occurrences with support for comprehensive filtering
         Uses EXACTLY what the user asks for - no fallback logic here
