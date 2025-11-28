@@ -636,7 +636,7 @@ function Chatbot() {
 
       <div className="chatbot-disclaimer">
         <p className="disclaimer-text">
-          Note: While I've been tested carefully, I might sometimes make mistakes. I don't collect personal data, and you shouldn't share sensitive information. Please keep our chat respectful and on topic.
+          I am powered by OpenAI's GPT-5. While I have been carefully configured and tested, I might sometimes make mistakes. I do not collect personal data. Please keep our chat respectful and on topic.
         </p>
       </div>
 

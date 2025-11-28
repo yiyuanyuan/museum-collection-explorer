@@ -1,6 +1,7 @@
 """
 Enhanced chatbot service with comprehensive OpenAI tools API for ALA Biocache integration
 Implements fallback logic: vernacular name → scientific name (and vice versa)
+ENHANCED: Now includes geocoding support for suburb-level queries
 """
 import base64
 from typing import Dict, List, Optional
@@ -11,6 +12,7 @@ from openai import OpenAI
 from config import Config
 from api.biocache import BiocacheService
 from api.response_cleaner import ResponseCleaner
+from api.geocoding import GeocodingService
 
 
 class ChatbotService:
@@ -19,6 +21,7 @@ class ChatbotService:
         self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
         self.biocache_service = BiocacheService()
         self.response_cleaner = ResponseCleaner()
+        self.geocoding_service = GeocodingService()  # NEW: Add geocoding service
         
         self.model = "gpt-5-nano"
         self.conversations = {}
@@ -491,11 +494,96 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         elif kwargs.get('common_name'):
             filters['common_name'] = kwargs['common_name']
         
-        # Geographic
+        # Geographic - STATE FILTER
         if kwargs.get('state_province'):
             filters['state_province'] = kwargs['state_province']
+        
+        # Geographic - LOCALITY (with intelligent geocoding)
+        # ENHANCED: Handles multiple suburbs with same name across Australia
         if kwargs.get('locality'):
-            filters['locality'] = kwargs['locality']
+            locality = kwargs['locality']
+            
+            # Get ALL matching Australian locations
+            geocoded_list = self.geocoding_service.geocode_location(
+                locality, 
+                bias_to_australia=True,
+                return_all_matches=True
+            )
+            
+            if geocoded_list:
+                # Convert to list if single result
+                if not isinstance(geocoded_list, list):
+                    geocoded_list = [geocoded_list]
+                
+                # Filter to user's specified state if provided
+                if kwargs.get('state_province'):
+                    user_state = kwargs['state_province']
+                    geocoded_list = [loc for loc in geocoded_list if loc.get('state') == user_state]
+                
+                if len(geocoded_list) == 1:
+                    # Single location - use it
+                    geocoded = geocoded_list[0]
+                    
+                    if self.geocoding_service.should_use_state_filter(geocoded['place_type']):
+                        # State-level query
+                        state = geocoded.get('state')
+                        if state and not kwargs.get('state_province'):
+                            filters['state_province'] = state
+                    else:
+                        # Suburb/city - use coordinates
+                        lat = geocoded['latitude']
+                        lon = geocoded['longitude']
+                        radius = self.geocoding_service.get_search_radius_km(geocoded['place_type'])
+                        
+                        # Also add state for precision
+                        state = geocoded.get('state')
+                        if state and not kwargs.get('state_province'):
+                            filters['state_province'] = state
+                
+                elif len(geocoded_list) > 1:
+                    # Multiple locations - search all and combine
+                    print(f"[ChatbotService] Found {len(geocoded_list)} locations, searching all")
+                    
+                    all_occurrences = []
+                    total_sum = 0
+                    
+                    for location in geocoded_list:
+                        loc_filters = filters.copy()
+                        loc_filters['state_province'] = location.get('state')
+                        
+                        loc_results = self.biocache_service.search_occurrences(
+                            filters=loc_filters,
+                            page=0,
+                            page_size=limit,
+                            lat=location['latitude'],
+                            lon=location['longitude'],
+                            radius=self.geocoding_service.get_search_radius_km(location['place_type'])
+                        )
+                        
+                        all_occurrences.extend(loc_results.get('occurrences', []))
+                        total_sum += loc_results.get('totalRecords', 0)
+                    
+                    # Remove duplicates by UUID
+                    seen = set()
+                    unique = []
+                    for occ in all_occurrences:
+                        uuid = occ.get('id')
+                        if uuid and uuid not in seen:
+                            seen.add(uuid)
+                            unique.append(occ)
+                    
+                    # Override normal search - use combined results
+                    results = {
+                        'totalRecords': total_sum,
+                        'occurrences': unique[:limit],
+                        'ala_url': None
+                    }
+                    
+                    # Skip normal search below
+                    kwargs['_skip_normal_search'] = True
+            else:
+                # Fallback to text search
+                filters['locality'] = locality
         
         # Temporal
         if kwargs.get('year'):
@@ -543,16 +631,18 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         bounds = kwargs.get('bounds')
         limit = min(kwargs.get('limit', 10), 100)
         
-        # Call API
-        results = self.biocache_service.search_occurrences(
-            filters=filters if filters else None,
-            page=0,
-            page_size=limit,
-            bounds=bounds,
-            lat=lat,
-            lon=lon,
-            radius=radius
-        )
+        # Check if we already did combined search for multiple locations
+        if not kwargs.get('_skip_normal_search'):
+            # Call API
+            results = self.biocache_service.search_occurrences(
+                filters=filters if filters else None,
+                page=0,
+                page_size=limit,
+                bounds=bounds,
+                lat=lat,
+                lon=lon,
+                radius=radius
+            )
         
         # DEBUG: Check what we got back
         print(f"[ChatbotService] search_occurrences returned {results.get('totalRecords')} records")
