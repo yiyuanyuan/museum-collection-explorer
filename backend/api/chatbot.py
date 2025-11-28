@@ -631,6 +631,11 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         bounds = kwargs.get('bounds')
         limit = min(kwargs.get('limit', 10), 100)
         
+        # DEBUG: Log what we're about to pass
+        print(f"[ChatbotService] About to call search_occurrences with:")
+        print(f"[ChatbotService]   lat={lat}, lon={lon}, radius={radius}")
+        print(f"[ChatbotService]   filters={filters}")
+        
         # Check if we already did combined search for multiple locations
         if not kwargs.get('_skip_normal_search'):
             # Call API
