@@ -17,14 +17,17 @@ class BiocacheService:
                           lat: Optional[float] = None,
                           lon: Optional[float] = None,
                           radius: Optional[float] = None,
-                          show_only_with_images: bool = False) -> Dict:
+                          show_only_with_images: bool = True) -> Dict:
         """
         Enhanced search occurrences with support for comprehensive filtering
         Uses EXACTLY what the user asks for - no fallback logic here
         Fallback logic is handled by ChatbotService
         """
-        # DEBUG: Log the image filter parameter
-        print(f"[BiocacheService] search_occurrences called with show_only_with_images={show_only_with_images}")
+        # DEBUG: Log ALL parameters received
+        print(f"[BiocacheService] search_occurrences called with:")
+        print(f"[BiocacheService]   show_only_with_images={show_only_with_images}")
+        print(f"[BiocacheService]   lat={lat}, lon={lon}, radius={radius}")
+        print(f"[BiocacheService]   filters={filters}")
         sys.stdout.flush()
         
         # Build filter query array
