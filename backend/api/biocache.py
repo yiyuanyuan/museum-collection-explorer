@@ -5,6 +5,28 @@ import sys
 from urllib.parse import quote
 
 class BiocacheService:
+    # Map common generic terms to taxonomic groups for precise searching
+    TAXONOMIC_GROUPS = {
+        'snake': 'order:"Serpentes"',
+        'snakes': 'order:"Serpentes"',
+        'bird': 'class:"Aves"',
+        'birds': 'class:"Aves"',
+        'frog': 'order:"Anura"',
+        'frogs': 'order:"Anura"',
+        'lizard': 'order:"Squamata" NOT order:"Serpentes"',
+        'lizards': 'order:"Squamata" NOT order:"Serpentes"',
+        'fish': 'class:"Actinopterygii" OR class:"Chondrichthyes"',
+        'fishes': 'class:"Actinopterygii" OR class:"Chondrichthyes"',
+        'beetle': 'order:"Coleoptera"',
+        'beetles': 'order:"Coleoptera"',
+        'butterfly': 'order:"Lepidoptera"',
+        'butterflies': 'order:"Lepidoptera"',
+        'spider': 'order:"Araneae"',
+        'spiders': 'order:"Araneae"',
+        'ant': 'family:"Formicidae"',
+        'ants': 'family:"Formicidae"',
+    }
+    
     def __init__(self):
         self.base_url = Config.BIOCACHE_BASE_URL
         self.dataset_id = Config.DATASET_ID
@@ -86,12 +108,27 @@ class BiocacheService:
                     fq.append(f'(order:"{scientific_name}" OR class:"{scientific_name}" OR phylum:"{scientific_name}" OR kingdom:"{scientific_name}")')
                     print(f"[BiocacheService] Using higher taxonomy search for: {scientific_name}")
             
-            # RULE 1: Common name search - use vernacularName field ONLY
+            # RULE 1: Common name search with intelligent fallback
             # RULE 4: Changed from 'if' to 'elif' to prevent both names being used simultaneously
             elif filters.get('common_name'):
-                common_name = filters['common_name']
-                fq.append(f'vernacularName:"{common_name}"')
-                print(f"[BiocacheService] Using vernacularName field for: {common_name}")
+                common_name = filters['common_name'].strip().lower()
+                original_name = filters['common_name']
+                use_wildcard = filters.get('common_name_wildcard', False)
+                
+                # Check if this is a known taxonomic group
+                if common_name in self.TAXONOMIC_GROUPS:
+                    # Use taxonomic filter for precision (e.g., "snake" → order:Serpentes)
+                    taxonomic_filter = self.TAXONOMIC_GROUPS[common_name]
+                    fq.append(taxonomic_filter)
+                    print(f"[BiocacheService] Using taxonomic group for '{common_name}': {taxonomic_filter}")
+                elif use_wildcard:
+                    # Use wildcard search for fallback
+                    fq.append(f'vernacularName:*{original_name}*')
+                    print(f"[BiocacheService] Using WILDCARD vernacularName search for: *{original_name}*")
+                else:
+                    # Use exact match
+                    fq.append(f'vernacularName:"{original_name}"')
+                    print(f"[BiocacheService] Using exact vernacularName field for: {original_name}")
             
             # Geographic filters
             if filters.get('state_province'):
