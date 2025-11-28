@@ -487,6 +487,9 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         sys.stdout.flush()
         
         filters = {}
+        lat = None
+        lon = None
+        radius = None
         
         # Taxonomic - CRITICAL: Use if/elif to prevent both names (RULE 4)
         if kwargs.get('scientific_name'):
@@ -618,10 +621,7 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         if kwargs.get('free_text'):
             filters['free_text_search'] = kwargs['free_text']
         
-        # Spatial parameters
-        lat = None
-        lon = None
-        radius = None
+        # Spatial parameters - explicit point_radius from user
         if kwargs.get('point_radius'):
             pr = kwargs['point_radius']
             lat = pr['latitude']
