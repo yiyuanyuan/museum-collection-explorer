@@ -346,25 +346,10 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         # RULE 3: No results found, try fallback
         print("[ChatbotService] No results with original query, attempting fallback...")
         
-        # Case 1: User searched with vernacular name → try wildcard first, then scientific name
+        # Case 1: User searched with vernacular name → try scientific name
         if kwargs.get('common_name'):
             common_name = kwargs['common_name']
-            
-            # FALLBACK 1: Try wildcard search for common name
-            # This catches cases like searching "snake" and finding "Red-bellied Black Snake"
-            print(f"[ChatbotService] Attempting wildcard search for: {common_name}")
-            kwargs_wildcard = kwargs.copy()
-            kwargs_wildcard['common_name_wildcard'] = True  # Signal to use wildcard
-            
-            wildcard_results = self._search_specimens(**kwargs_wildcard)
-            
-            if wildcard_results['total_records'] > 0:
-                print(f"[ChatbotService] ✓ Wildcard fallback successful! Found {wildcard_results['total_records']} records")
-                wildcard_results['fallback_note'] = f"Used wildcard search for '{common_name}'"
-                return wildcard_results
-            
-            # FALLBACK 2: Try scientific name lookup (original fallback)
-            print(f"[ChatbotService] Wildcard returned 0 results. Attempting to find scientific name for: {common_name}")
+            print(f"[ChatbotService] Attempting to find scientific name for: {common_name}")
             
             # Try to get scientific name from first result's taxonomy
             scientific_name = self._get_scientific_name_for_common(common_name)
@@ -511,9 +496,6 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
             filters['scientific_name'] = kwargs['scientific_name']
         elif kwargs.get('common_name'):
             filters['common_name'] = kwargs['common_name']
-            # Add wildcard flag if requested (for fallback searches)
-            if kwargs.get('common_name_wildcard'):
-                filters['common_name_wildcard'] = True
         
         # Geographic - STATE FILTER
         if kwargs.get('state_province'):
