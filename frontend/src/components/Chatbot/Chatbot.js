@@ -7,7 +7,7 @@ function Chatbot() {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      text: 'Welcome to Collection Explorer! I was developed by researchers from the University of Technology Sydney in collaboration with the Australian Museum Research Institute.\nI can help you learn about specimens in the Museum\'s life-science collection and identify animals from your photos.\nI can search by scientific or common names, locations, dates, or catalog numbers.\nTry browsing the map and feel free to ask me anything about the specimen records.\n\nFor example:\n• How many Christmas Beetles do you have from NSW?\n• Show me some images of Dory.\n• Which Echidnas were found after the 1990s?\n• What Malurus do you have?'}
+      text: 'Welcome to Collection Explorer! I was developed by researchers from the University of Technology Sydney in collaboration with the Australian Museum Research Institute.\nI can help you learn about specimens in the Museum\'s life-science collection and identify animals from your photos.\nI can search by scientific or common names, locations, dates, or catalog numbers.\nTry browsing the map and feel free to ask me anything about the specimen records.\n\nFor example:\n• How many Christmas Beetles do you have from NSW?\n• Show me some images of Dory.\n• Which sugar gliders were found after the 1990s?\n• What Malurus do you have?'}
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [suggestions, setSuggestions] = useState([]);
