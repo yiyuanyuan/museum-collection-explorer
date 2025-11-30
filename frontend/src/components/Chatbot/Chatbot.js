@@ -433,36 +433,18 @@ function Chatbot() {
   };
 
   const formatMessageText = (text) => {
-    // Step 1: Handle Markdown images FIRST: ![alt](url) -> <img> tag
-    // This must come before URL parsing to avoid conflicts
-    text = text.replace(
-      /!\[([^\]]*)\]\(([^)]+)\)/g, 
-      '<img src="$2" alt="$1" style="max-width: 100%; max-height: 300px; border-radius: 4px; margin: 0.5rem 0; display: block;" />'
-    );
-    
-    // Step 2: Handle Markdown links: [text](url) -> <a> tag
-    text = text.replace(
-      /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">$1</a>'
-    );
-    
-    // Step 3: Handle bold text
+    // Handle bold text first
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     
-    // Step 4: Handle italic text (single asterisks)
-    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    
-    // Step 5: Handle line breaks
+    // Handle line breaks
     text = text.replace(/\n/g, '<br>');
     
-    // Step 6: Parse remaining bare URLs (not already in links/images)
+    // Parse URLs with our custom parser
     const parsed = parseUrlsWithQuotedParams(text);
     
     // Convert parsed segments to HTML
     return parsed.map(segment => {
       if (segment.type === 'url') {
-        // Check if this URL is already inside an href or src attribute
-        // by looking at what comes before it in the result so far
         return `<a href="${segment.content}" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">${segment.content}</a>`;
       } else {
         return segment.content;
