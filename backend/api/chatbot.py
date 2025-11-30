@@ -3,6 +3,8 @@ Enhanced chatbot service with comprehensive OpenAI tools API for ALA Biocache in
 Implements fallback logic: vernacular name → scientific name (and vice versa)
 ENHANCED: Now includes geocoding support for suburb-level queries
 FIXED: Generic animal terms now dynamically resolve to taxonomic searches via ALA BIE
+FIXED: Search order - taxonomy resolution happens FIRST for generic terms
+FIXED: ALA BIE query format - removed problematic kingdom filter
 """
 import base64
 from typing import Dict, List, Optional, Tuple
@@ -291,12 +293,38 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         else:
             raise ValueError(f"Unknown function: {function_name}")
 
+    def _is_generic_animal_term(self, term: str) -> bool:
+        """
+        Check if a term is a generic animal category that won't appear in most species names.
+        These terms need taxonomy resolution FIRST, not wildcard search.
+        """
+        # Generic terms that describe animal groups but don't appear in species common names
+        generic_terms = {
+            # Birds - "bird" doesn't appear in most bird names (kookaburra, magpie, etc.)
+            'bird', 'birds',
+            # Fish - "fish" doesn't appear in most fish names (barramundi, snapper, etc.)  
+            'fish', 'fishes',
+            # Insects - most insects aren't called "_____ insect"
+            'insect', 'insects',
+            # Mammals - "mammal" rarely in common names
+            'mammal', 'mammals',
+            # Reptiles - "reptile" rarely in common names
+            'reptile', 'reptiles',
+            # Amphibians
+            'amphibian', 'amphibians',
+            # Invertebrates
+            'invertebrate', 'invertebrates',
+        }
+        
+        term_lower = term.lower().strip()
+        return term_lower in generic_terms
+
     def _search_specimens_with_fallback(self, **kwargs) -> Dict:
         """
         Search with intelligent fallback:
-        1. First try wildcard vernacular name search
-        2. If no results, use ALA BIE to find common taxonomy across results
-        3. Search by that taxonomic level (class, order, family, etc.)
+        1. For GENERIC terms (bird, fish, insect): resolve taxonomy FIRST
+        2. For SPECIFIC terms (lyrebird, barramundi): try wildcard search first
+        3. If no results, try alternative approaches
         """
         print(f"[ChatbotService] _search_specimens_with_fallback called with kwargs: {kwargs}")
         sys.stdout.flush()
@@ -306,6 +334,36 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
             kwargs = kwargs.copy()
             del kwargs['common_name']
         
+        common_name = kwargs.get('common_name')
+        
+        # For GENERIC animal terms, try taxonomy resolution FIRST
+        if common_name and self._is_generic_animal_term(common_name):
+            print(f"[ChatbotService] '{common_name}' is a generic term - trying taxonomy resolution FIRST")
+            
+            taxonomy_info = self._resolve_common_name_to_taxonomy(common_name)
+            
+            if taxonomy_info:
+                rank, value, display_name = taxonomy_info
+                print(f"[ChatbotService] ✓ Resolved '{common_name}' to {rank}: {value}")
+                
+                # Search using taxonomy instead of common_name
+                kwargs_copy = kwargs.copy()
+                del kwargs_copy['common_name']
+                kwargs_copy[rank] = value
+                
+                taxonomy_results = self._search_specimens(**kwargs_copy)
+                
+                if taxonomy_results['total_records'] > 0:
+                    print(f"[ChatbotService] ✓ Taxonomy search successful! Found {taxonomy_results['total_records']} records")
+                    taxonomy_results['fallback_note'] = f"Searched using {rank} '{value}' for '{common_name}'"
+                    taxonomy_results['resolved_taxonomy'] = {'rank': rank, 'value': value, 'common_term': common_name}
+                    return taxonomy_results
+                else:
+                    print(f"[ChatbotService] Taxonomy search returned 0 results")
+            else:
+                print(f"[ChatbotService] Could not resolve taxonomy for '{common_name}'")
+        
+        # For SPECIFIC terms (or if taxonomy resolution failed), try wildcard search
         original_results = self._search_specimens(**kwargs)
         
         if original_results['total_records'] > 0:
@@ -313,8 +371,8 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         
         print("[ChatbotService] No results with original query, attempting fallback...")
         
-        if kwargs.get('common_name'):
-            common_name = kwargs['common_name']
+        # Fallback: try taxonomy resolution (for specific terms that didn't match wildcard)
+        if common_name and not self._is_generic_animal_term(common_name):
             print(f"[ChatbotService] Attempting taxonomic resolution for: {common_name}")
             
             taxonomy_info = self._resolve_common_name_to_taxonomy(common_name)
@@ -335,6 +393,7 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
                     fallback_results['resolved_taxonomy'] = {'rank': rank, 'value': value, 'common_term': common_name}
                     return fallback_results
             
+            # Try scientific name lookup
             scientific_name = self._get_scientific_name_for_common(common_name)
             
             if scientific_name:
@@ -379,6 +438,8 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         Uses ALA BIE to find multiple matching taxa, then identifies the common
         taxonomic level shared by all results.
         
+        FIXED: Removed kingdom filter from API call - filter in code instead
+        
         Args:
             common_name: Generic term like "bird", "fish", "insect", "beetle"
             
@@ -390,35 +451,56 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
             import requests
             
             url = "https://bie.ala.org.au/ws/search"
+            # FIXED: Don't use list for fq, use single string
+            # FIXED: Remove kingdom filter - filter results in code instead
             params = {
                 'q': common_name,
-                'fq': ['idxtype:TAXON', 'kingdom:ANIMALIA'],
-                'pageSize': 15
+                'fq': 'idxtype:TAXON',  # Single string, not list
+                'pageSize': 20
             }
             
             print(f"[ChatbotService] Querying ALA BIE for taxonomic resolution: '{common_name}'")
+            print(f"[ChatbotService] ALA BIE URL params: {params}")
             
             response = requests.get(url, params=params, timeout=10)
+            print(f"[ChatbotService] ALA BIE response status: {response.status_code}")
+            
             if response.status_code != 200:
                 print(f"[ChatbotService] ALA BIE request failed: {response.status_code}")
+                print(f"[ChatbotService] Response text: {response.text[:500]}")
                 return None
             
             data = response.json()
-            results = data.get('searchResults', {}).get('results', [])
+            all_results = data.get('searchResults', {}).get('results', [])
             
-            if not results:
+            print(f"[ChatbotService] ALA BIE returned {len(all_results)} total results")
+            
+            if not all_results:
                 print(f"[ChatbotService] No ALA BIE results for '{common_name}'")
                 return None
             
-            print(f"[ChatbotService] Got {len(results)} results from ALA BIE")
+            # Filter to ANIMALIA kingdom in code (more reliable than API filter)
+            results = [r for r in all_results if (r.get('kingdom') or '').upper() == 'ANIMALIA']
+            print(f"[ChatbotService] After ANIMALIA filter: {len(results)} results")
+            
+            # Log first few results for debugging
+            for i, r in enumerate(results[:3]):
+                print(f"[ChatbotService]   Result {i+1}: {r.get('name')} - {r.get('rank')} - class={r.get('class')}")
+            
+            if not results:
+                print(f"[ChatbotService] No ANIMALIA results for '{common_name}'")
+                # Try without kingdom filter as last resort
+                results = all_results
+                print(f"[ChatbotService] Using all {len(results)} results without kingdom filter")
             
             # Check if any result IS the taxonomic rank itself
             for result in results:
                 result_rank = result.get('rank', '').lower()
                 result_name = result.get('scientificName') or result.get('name')
                 
-                if result_rank in ['class', 'order', 'family', 'subclass', 'superorder', 'infraorder']:
+                if result_rank in ['class', 'order', 'family', 'subclass', 'superorder', 'infraorder', 'suborder']:
                     print(f"[ChatbotService] Found direct taxonomic match: {result_rank} = {result_name}")
+                    # Normalize rank to one we support in biocache
                     normalized_rank = result_rank if result_rank in ['class', 'order', 'family'] else 'order'
                     return (normalized_rank, result_name, common_name)
             
@@ -430,20 +512,14 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
                 for result in results:
                     value = result.get(rank)
                     if value:
-                        values.add(value.upper() if rank == 'class' else value)
+                        values.add(value)
                 
                 if len(values) == 1:
                     shared_value = values.pop()
-                    if rank == 'class':
-                        for result in results:
-                            if result.get(rank):
-                                shared_value = result.get(rank)
-                                break
-                    
-                    print(f"[ChatbotService] All {len(results)} results share {rank}: {shared_value}")
+                    print(f"[ChatbotService] ✓ All {len(results)} results share {rank}: {shared_value}")
                     return (rank, shared_value, common_name)
                 elif len(values) > 1:
-                    print(f"[ChatbotService] Results have {len(values)} different {rank} values: {values}")
+                    print(f"[ChatbotService] Results have {len(values)} different {rank} values: {list(values)[:5]}")
             
             print(f"[ChatbotService] No common taxonomy found across results")
             return None
@@ -460,10 +536,11 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
             import requests
             
             url = "https://bie.ala.org.au/ws/search"
+            # FIXED: Use single string for fq, not list
             params = {
                 'q': common_name,
-                'fq': ['idxtype:TAXON', 'kingdom:ANIMALIA'],
-                'pageSize': 10
+                'fq': 'idxtype:TAXON',
+                'pageSize': 20
             }
             
             print(f"[ChatbotService] ALA BIE scientific name lookup for: '{common_name}'")
@@ -471,7 +548,13 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
             response = requests.get(url, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                results = data.get('searchResults', {}).get('results', [])
+                all_results = data.get('searchResults', {}).get('results', [])
+                
+                # Filter to ANIMALIA in code
+                results = [r for r in all_results if (r.get('kingdom') or '').upper() == 'ANIMALIA']
+                
+                if not results:
+                    results = all_results  # Fallback to all results
                 
                 if results:
                     result = results[0]
@@ -745,6 +828,22 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
 
     def _get_specimen_statistics_with_fallback(self, **kwargs) -> Dict:
         """Get statistics with fallback logic"""
+        common_name = kwargs.get('common_name')
+        
+        # For generic terms, try taxonomy first
+        if common_name and self._is_generic_animal_term(common_name):
+            taxonomy_info = self._resolve_common_name_to_taxonomy(common_name)
+            
+            if taxonomy_info:
+                rank, value, _ = taxonomy_info
+                kwargs_copy = kwargs.copy()
+                del kwargs_copy['common_name']
+                kwargs_copy[rank] = value
+                
+                results = self._get_specimen_statistics(**kwargs_copy)
+                if results['total_records'] > 0:
+                    return results
+        
         original_results = self._get_specimen_statistics(**kwargs)
         
         if original_results['total_records'] > 0:
@@ -752,9 +851,7 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         
         print("[ChatbotService] No statistics with original query, attempting fallback...")
         
-        if kwargs.get('common_name'):
-            common_name = kwargs['common_name']
-            
+        if common_name:
             taxonomy_info = self._resolve_common_name_to_taxonomy(common_name)
             
             if taxonomy_info:
