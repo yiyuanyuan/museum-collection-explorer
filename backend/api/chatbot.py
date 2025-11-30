@@ -200,8 +200,8 @@ When calling search_specimens or get_specimen_statistics:
 - Be concise and helpful (2-3 sentences for simple queries, 3-5 sentences for detailed results).
 - When discussing collection records, provide ACTUAL numbers from API data only and NEVER invent or estimate statistics.
 - For casual animal questions, provide general facts first, then connect to collection data IF RELEVANT.
-- ALWAYS include the ala_url after retrieving specimen search results, unless the search returned 0 records.
-- If no results found, say so clearly and do not include ala_url, then provide some general facts about the species.
+- ALWAYS include the ala_url after retrieving specimen search results or statistics, so users can explore the data themselves.
+- If no results found, say so clearly but still include the ala_url so users can verify the search.
 - Don't follow up with more questions or offer follow-up options to the user.
 - When the user asks for images of a species, show up to five images.
 - When discussing specific species or specimen records, show images from the API response when they're present (up to 5 images).
@@ -224,6 +224,11 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
 - Check the returned results for image URLs (imageUrl, largeImageUrl, thumbnailUrl) and display them when present (up to 5 images total).
 - Include the ala_url at the end.
 - Remove any internal processing from your response.
+
+**Example 3:**
+User: "How many frogs are in the collection?"
+You: Call get_specimen_statistics with common_name="frog", then respond naturally like:
+"The collection contains [X] frog specimens. [View on Atlas of Living Australia](ala_url)"
 
 """
 # - NEVER show or narrate your internal processing, such as JSON, function calls, and your action steps, to the user.
@@ -1006,8 +1011,12 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
         
         statistics = {
             "total_records": results['totalRecords'],
-            "faceted_counts": {}
+            "faceted_counts": {},
+            "ala_url": results.get('ala_url')  # Include ALA URL for statistics too
         }
+        
+        print(f"[ChatbotService] Statistics query returned {results['totalRecords']} total records")
+        print(f"[ChatbotService] Statistics ala_url: {results.get('ala_url')}")
         
         requested_facets = kwargs.get('include_facets', [])
         all_facets = results.get('facets', {})
