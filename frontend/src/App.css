@@ -403,8 +403,8 @@ body {
   
   .floating-survey.expanded .survey-content {
     margin-left: 3rem; /* Space for the tab */
-    max-width: 280px;
-    padding: 2rem 1rem 1rem;
+    max-width: 250px;
+    padding: 1rem 1rem 1rem;
   }
   
   .survey-text {
@@ -453,18 +453,18 @@ body {
     pointer-events: auto !important;
     display: block !important;
     margin-left: 0;
-    max-width: 300px;
-    padding: 1rem 1.25rem 1rem;
+    max-width: 250px;
+    padding: 0.5rem 1.25rem 0.5rem;
   }
 
   .survey-text {
     font-size: 0.8125rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
   .survey-button {
     font-size: 0.875rem;
-    padding: 0.625rem 1.25rem;
+    padding: 0.4rem 1.25rem;
   }
 }
 
