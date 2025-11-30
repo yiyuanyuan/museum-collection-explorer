@@ -24,7 +24,7 @@ class ChatbotService:
         self.response_cleaner = ResponseCleaner()
         self.geocoding_service = GeocodingService()  # NEW: Add geocoding service
         
-        self.model = "gpt-4o"
+        self.model = "gpt-5-nano"
         self.conversations = {}
         self.max_history_length = 20
         
