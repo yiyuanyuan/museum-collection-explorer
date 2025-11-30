@@ -2,7 +2,6 @@
 Enhanced chatbot service with comprehensive OpenAI tools API for ALA Biocache integration
 Implements fallback logic: vernacular name → scientific name (and vice versa)
 ENHANCED: Now includes geocoding support for suburb-level queries
-ENHANCED: Added GENERIC_TERM_TAXONOMY for reliable generic animal term searches
 """
 import base64
 from typing import Dict, List, Optional
@@ -16,98 +15,6 @@ from api.response_cleaner import ResponseCleaner
 from api.geocoding import GeocodingService
 
 
-# Hardcoded taxonomy mapping for common generic animal terms
-# This bypasses unreliable ALA BIE lookups which often return wrong results
-# (e.g., "bird" returns plants like bird of paradise)
-GENERIC_TERM_TAXONOMY = {
-    # Birds
-    'bird': {'class': 'Aves'},
-    'birds': {'class': 'Aves'},
-    # Snakes - use class Reptilia with vernacular filter
-    'snake': {'class': 'Reptilia', 'vernacular_filter': 'snake'},
-    'snakes': {'class': 'Reptilia', 'vernacular_filter': 'snake'},
-    # Lizards
-    'lizard': {'class': 'Reptilia', 'vernacular_filter': 'lizard'},
-    'lizards': {'class': 'Reptilia', 'vernacular_filter': 'lizard'},
-    # Frogs
-    'frog': {'class': 'Amphibia'},
-    'frogs': {'class': 'Amphibia'},
-    'amphibian': {'class': 'Amphibia'},
-    'amphibians': {'class': 'Amphibia'},
-    # Fish
-    'fish': {'class': 'Actinopterygii'},
-    'fishes': {'class': 'Actinopterygii'},
-    # Mammals
-    'mammal': {'class': 'Mammalia'},
-    'mammals': {'class': 'Mammalia'},
-    # Reptiles (general)
-    'reptile': {'class': 'Reptilia'},
-    'reptiles': {'class': 'Reptilia'},
-    # Insects
-    'insect': {'class': 'Insecta'},
-    'insects': {'class': 'Insecta'},
-    'bug': {'class': 'Insecta'},
-    'bugs': {'class': 'Insecta'},
-    # Spiders/Arachnids
-    'spider': {'class': 'Arachnida'},
-    'spiders': {'class': 'Arachnida'},
-    'arachnid': {'class': 'Arachnida'},
-    'arachnids': {'class': 'Arachnida'},
-    # Butterflies/Moths
-    'butterfly': {'order': 'Lepidoptera'},
-    'butterflies': {'order': 'Lepidoptera'},
-    'moth': {'order': 'Lepidoptera'},
-    'moths': {'order': 'Lepidoptera'},
-    # Beetles
-    'beetle': {'order': 'Coleoptera'},
-    'beetles': {'order': 'Coleoptera'},
-    # Turtles
-    'turtle': {'order': 'Testudines'},
-    'turtles': {'order': 'Testudines'},
-    'tortoise': {'order': 'Testudines'},
-    'tortoises': {'order': 'Testudines'},
-    # Crocodiles
-    'crocodile': {'order': 'Crocodylia'},
-    'crocodiles': {'order': 'Crocodylia'},
-    'croc': {'order': 'Crocodylia'},
-    'crocs': {'order': 'Crocodylia'},
-    # Sharks
-    'shark': {'class': 'Chondrichthyes'},
-    'sharks': {'class': 'Chondrichthyes'},
-    # Crabs
-    'crab': {'order': 'Decapoda'},
-    'crabs': {'order': 'Decapoda'},
-    # Ants
-    'ant': {'family': 'Formicidae'},
-    'ants': {'family': 'Formicidae'},
-    # Bees
-    'bee': {'family': 'Apidae'},
-    'bees': {'family': 'Apidae'},
-    # Wasps
-    'wasp': {'order': 'Hymenoptera', 'vernacular_filter': 'wasp'},
-    'wasps': {'order': 'Hymenoptera', 'vernacular_filter': 'wasp'},
-    # Flies
-    'fly': {'order': 'Diptera'},
-    'flies': {'order': 'Diptera'},
-    # Dragonflies
-    'dragonfly': {'order': 'Odonata'},
-    'dragonflies': {'order': 'Odonata'},
-    # Worms
-    'worm': {'phylum': 'Annelida'},
-    'worms': {'phylum': 'Annelida'},
-    # Molluscs
-    'snail': {'class': 'Gastropoda'},
-    'snails': {'class': 'Gastropoda'},
-    'slug': {'class': 'Gastropoda'},
-    'slugs': {'class': 'Gastropoda'},
-    # Sea creatures
-    'jellyfish': {'phylum': 'Cnidaria'},
-    'coral': {'phylum': 'Cnidaria'},
-    'starfish': {'class': 'Asteroidea'},
-    'sea star': {'class': 'Asteroidea'},
-}
-
-
 class ChatbotService:
     def __init__(self):
         """Initialize the chatbot with OpenAI client and comprehensive tool definitions"""
@@ -116,7 +23,7 @@ class ChatbotService:
         self.response_cleaner = ResponseCleaner()
         self.geocoding_service = GeocodingService()  # NEW: Add geocoding service
         
-        self.model = "gpt-4o"
+        self.model = "gpt-5-nano"
         self.conversations = {}
         self.max_history_length = 20
         
@@ -164,7 +71,6 @@ When calling search_specimens or get_specimen_statistics:
 - When discussing specific species or specimen records, show images from the API response when they're present (up to 5 images).
 - Use British English spelling (e.g., "specialised", "colour", "catalogue").
 - When users ask follow-up questions using pronouns (e.g., "these", "those"), recognise they're referring to the previous query's context and parameters.
-- When showing search results for generic categories (e.g., "birds", "snakes"), list 2-3 representative species by their common names found in the results.
 
 ## Example
 
@@ -182,13 +88,6 @@ You: Call search_specimens with common_name="frog" (matches any species with "fr
 - Check the returned results for image URLs (imageUrl, largeImageUrl, thumbnailUrl) and display them when present (up to 5 images total).
 - Include the ala_url at the end.
 - Remove any internal processing from your response.
-
-**Example 3:**
-User: "What birds were found in Beaumont Hills?"
-You: Call search_specimens with common_name="bird" and locality="Beaumont Hills", then:
-- Report the total count found.
-- List 2-3 representative species by common name (e.g., "including Australian Magpie, Noisy Miner, and Rainbow Lorikeet").
-- Include the ala_url at the end.
 
 """
 # - NEVER show or narrate your internal processing, such as JSON, function calls, and your action steps, to the user.
@@ -276,6 +175,11 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
                                 "type": "string",
                                 "description": "Institution name"
                             },
+                            #"basis_of_record": {
+                                #"type": "string",
+                                #"enum": ["PRESERVED_SPECIMEN", "HUMAN_OBSERVATION", "LIVING_SPECIMEN", "MACHINE_OBSERVATION"],
+                                #"description": "Record type"
+                            #},
                             "has_image": {
                                 "type": "boolean",
                                 "description": "Filter by image availability"
@@ -327,7 +231,7 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
                                 "type": "array",
                                 "items": {
                                     "type": "string",
-                                    "enum": ["year", "state_province", "collection_name", "family", "order", "class", "genus", "institution"]
+                                    "enum": ["year", "state_province", "collection_name", "family", "order", "class", "genus", "institution"] #"basis_of_record",
                                 },
                                 "description": "Faceted distributions to include"
                             }
@@ -417,7 +321,6 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
     def _search_specimens_with_fallback(self, **kwargs) -> Dict:
         """
         RULE 3 IMPLEMENTATION: Search with fallback
-        - First check if common_name is a generic term with hardcoded taxonomy
         - If vernacular name returns 0 results, try scientific name
         - If scientific name returns 0 results, try vernacular name
         """
@@ -432,48 +335,6 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
             print(f"[ChatbotService]   common_name (will be ignored): {kwargs['common_name']}")
             kwargs = kwargs.copy()
             del kwargs['common_name']
-        
-        # NEW: Check if common_name is a generic term with hardcoded taxonomy
-        common_name = kwargs.get('common_name', '').lower().strip()
-        if common_name in GENERIC_TERM_TAXONOMY:
-            print(f"[ChatbotService] '{common_name}' is a generic term - using hardcoded taxonomy")
-            taxonomy_info = GENERIC_TERM_TAXONOMY[common_name]
-            
-            # Create a copy of kwargs without common_name
-            kwargs_copy = kwargs.copy()
-            del kwargs_copy['common_name']
-            
-            # Add the appropriate taxonomic filter
-            if 'class' in taxonomy_info:
-                kwargs_copy['taxon_class'] = taxonomy_info['class']
-                print(f"[ChatbotService] Using class filter: {taxonomy_info['class']}")
-            if 'order' in taxonomy_info:
-                kwargs_copy['taxon_order'] = taxonomy_info['order']
-                print(f"[ChatbotService] Using order filter: {taxonomy_info['order']}")
-            if 'family' in taxonomy_info:
-                kwargs_copy['taxon_family'] = taxonomy_info['family']
-                print(f"[ChatbotService] Using family filter: {taxonomy_info['family']}")
-            if 'phylum' in taxonomy_info:
-                kwargs_copy['taxon_phylum'] = taxonomy_info['phylum']
-                print(f"[ChatbotService] Using phylum filter: {taxonomy_info['phylum']}")
-            
-            # Add vernacular filter if specified (for filtering results like "snake" within Reptilia)
-            if 'vernacular_filter' in taxonomy_info:
-                kwargs_copy['vernacular_filter'] = taxonomy_info['vernacular_filter']
-                print(f"[ChatbotService] Using vernacular filter: {taxonomy_info['vernacular_filter']}")
-            
-            # Store original term for response
-            kwargs_copy['_original_common_name'] = common_name
-            
-            # Search with taxonomic filter
-            taxonomy_results = self._search_specimens(**kwargs_copy)
-            
-            if taxonomy_results['total_records'] > 0:
-                print(f"[ChatbotService] ✓ Taxonomy search found {taxonomy_results['total_records']} records")
-                taxonomy_results['search_note'] = f"Searched for {common_name} using taxonomic classification"
-                return taxonomy_results
-            else:
-                print(f"[ChatbotService] Taxonomy search returned 0 results, trying vernacular fallback")
         
         # First attempt with original query
         original_results = self._search_specimens(**kwargs)
@@ -549,40 +410,30 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
             params = {
                 'q': common_name,
                 'fq': 'idxtype:TAXON',
-                'pageSize': 5
+                'pageSize': 1
             }
-            
-            print(f"[ChatbotService] ALA BIE scientific name lookup for: '{common_name}'")
             
             response = requests.get(url, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 results = data.get('searchResults', {}).get('results', [])
                 
-                # Filter to ANIMALIA kingdom to avoid plant matches
-                animalia_results = [r for r in results if r.get('kingdom', '').upper() == 'ANIMALIA']
-                
-                if animalia_results:
-                    result = animalia_results[0]
-                    print(f"[ChatbotService] Selected result kingdom: {result.get('kingdom')}")
+                if results:
+                    result = results[0]
+                    print(f"[ChatbotService] ALA BIE API result: {result}")
                     
-                    # Prefer scientificName over name
+                    # Prefer scientificName over name (name might be just genus)
                     scientific_name = result.get('scientificName') or result.get('name')
                     
+                    # Also check for acceptedConceptName which is often more complete
                     if not scientific_name or ' ' not in scientific_name:
                         scientific_name = result.get('acceptedConceptName') or scientific_name
                     
                     if scientific_name:
                         print(f"[ChatbotService] ALA lookup found scientific name: '{scientific_name}'")
                         return scientific_name
-                elif results:
-                    # Fallback to first result if no ANIMALIA matches
-                    result = results[0]
-                    scientific_name = result.get('scientificName') or result.get('name')
-                    if scientific_name:
-                        print(f"[ChatbotService] ALA lookup (no ANIMALIA filter) found: '{scientific_name}'")
-                        return scientific_name
-                        
+                    else:
+                        print(f"[ChatbotService] No scientific name found in result")
         except Exception as e:
             print(f"[ChatbotService] Error in ALA species lookup: {e}")
             import traceback
@@ -624,6 +475,14 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
 
     def _search_specimens(self, **kwargs) -> Dict:
         """Execute specimen search - no fallbacks here, just direct search"""
+        # CRITICAL: Confirm this function is being called
+        import os
+        log_path = os.path.join(os.getcwd(), 'chatbot_debug.log')
+        with open(log_path, 'a') as f:
+            f.write(f"\n=== _search_specimens CALLED ===\n")
+            f.write(f"kwargs: {kwargs}\n")
+            f.flush()
+        
         print(f"[ChatbotService] _search_specimens called with: {kwargs}")
         sys.stdout.flush()
         
@@ -631,20 +490,6 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
         lat = None
         lon = None
         radius = None
-        
-        # NEW: Handle taxonomic filters (class, order, family, phylum)
-        if kwargs.get('taxon_class'):
-            filters['class'] = kwargs['taxon_class']
-        if kwargs.get('taxon_order'):
-            filters['order'] = kwargs['taxon_order']
-        if kwargs.get('taxon_family'):
-            filters['family'] = kwargs['taxon_family']
-        if kwargs.get('taxon_phylum'):
-            filters['phylum'] = kwargs['taxon_phylum']
-        
-        # NEW: Handle vernacular filter (for filtering within taxonomic results)
-        if kwargs.get('vernacular_filter'):
-            filters['vernacular_filter'] = kwargs['vernacular_filter']
         
         # Taxonomic - CRITICAL: Use if/elif to prevent both names (RULE 4)
         if kwargs.get('scientific_name'):
@@ -658,8 +503,6 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
         
         # Geographic - LOCALITY (with intelligent geocoding)
         # ENHANCED: Handles multiple suburbs with same name across Australia
-        limit = min(kwargs.get('limit', 10), 100)
-        
         if kwargs.get('locality'):
             locality = kwargs['locality']
             
@@ -696,6 +539,7 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
                         radius = self.geocoding_service.get_search_radius_km(geocoded['place_type'])
                         
                         # REMOVE state filter - spatial search is more precise
+                        # The state filter may interfere with lat/lon/radius search
                         if 'state_province' in filters:
                             print(f"[ChatbotService] Removing state filter to use spatial search only")
                             del filters['state_province']
@@ -767,6 +611,8 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
             filters['collection_name'] = kwargs['collection_name']
         if kwargs.get('institution'):
             filters['institution'] = kwargs['institution']
+        #if kwargs.get('basis_of_record'):
+            #filters['basis_of_record'] = kwargs['basis_of_record']
         
         # Images
         if kwargs.get('has_image') is not None:
@@ -784,6 +630,7 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
             radius = pr['radius_km']
         
         bounds = kwargs.get('bounds')
+        limit = min(kwargs.get('limit', 10), 100)
         
         # DEBUG: Log what we're about to pass
         print(f"[ChatbotService] About to call search_occurrences with:")
@@ -843,6 +690,7 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
                 "uuid": occ.get('id'),
                 "collection_name": occ.get('collectionName'),
                 "institution": occ.get('institutionName'),
+                #"basis_of_record": occ.get('basisOfRecord'),
                 "location": {
                     "state": occ.get('stateProvince'),
                     "locality": occ.get('locality'),
@@ -878,6 +726,15 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
         if results.get('facets'):
             formatted_results['facets'] = results['facets']
         
+        # CRITICAL DEBUG: Log what we're returning
+        import os
+        log_path = os.path.join(os.getcwd(), 'chatbot_debug.log')
+        with open(log_path, 'a') as f:
+            f.write(f"\n=== _search_specimens returning ===\n")
+            f.write(f"total_records: {formatted_results['total_records']}\n")
+            f.write(f"ala_url: {formatted_results.get('ala_url')}\n")
+            f.flush()
+        
         print(f"[ChatbotService] Returning ala_url: {formatted_results.get('ala_url')}")
         sys.stdout.flush()
         
@@ -885,24 +742,6 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
 
     def _get_specimen_statistics_with_fallback(self, **kwargs) -> Dict:
         """Get statistics with fallback logic"""
-        # Check for generic terms first
-        common_name = kwargs.get('common_name', '').lower().strip()
-        if common_name in GENERIC_TERM_TAXONOMY:
-            print(f"[ChatbotService] Statistics: '{common_name}' is a generic term - using hardcoded taxonomy")
-            taxonomy_info = GENERIC_TERM_TAXONOMY[common_name]
-            
-            kwargs_copy = kwargs.copy()
-            del kwargs_copy['common_name']
-            
-            if 'class' in taxonomy_info:
-                kwargs_copy['taxon_class'] = taxonomy_info['class']
-            if 'order' in taxonomy_info:
-                kwargs_copy['taxon_order'] = taxonomy_info['order']
-            if 'family' in taxonomy_info:
-                kwargs_copy['taxon_family'] = taxonomy_info['family']
-            
-            return self._get_specimen_statistics(**kwargs_copy)
-        
         # First attempt
         original_results = self._get_specimen_statistics(**kwargs)
         
@@ -910,7 +749,10 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
         if original_results['total_records'] > 0:
             return original_results
         
-        # Fallback logic similar to search
+        # RULE 3: Try fallback
+        print("[ChatbotService] No statistics with original query, attempting fallback...")
+        
+        # Case 1: Vernacular → Scientific
         if kwargs.get('common_name'):
             common_name = kwargs['common_name']
             scientific_name = self._get_scientific_name_for_common(common_name)
@@ -921,115 +763,166 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
                 kwargs_copy['scientific_name'] = scientific_name
                 
                 fallback_results = self._get_specimen_statistics(**kwargs_copy)
-                
                 if fallback_results['total_records'] > 0:
-                    fallback_results['fallback_note'] = f"Used scientific name '{scientific_name}'"
+                    print(f"[ChatbotService] ✓ Statistics fallback successful!")
+                    return fallback_results
+        
+        # Case 2: Scientific → Vernacular
+        elif kwargs.get('scientific_name'):
+            scientific_name = kwargs['scientific_name']
+            vernacular_name = self._get_vernacular_name_for_scientific(scientific_name)
+            
+            if vernacular_name:
+                kwargs_copy = kwargs.copy()
+                del kwargs_copy['scientific_name']
+                kwargs_copy['common_name'] = vernacular_name
+                
+                fallback_results = self._get_specimen_statistics(**kwargs_copy)
+                if fallback_results['total_records'] > 0:
+                    print(f"[ChatbotService] ✓ Statistics fallback successful!")
                     return fallback_results
         
         return original_results
 
     def _get_specimen_statistics(self, **kwargs) -> Dict:
-        """Get specimen statistics and distributions"""
+        """Get statistics - no fallbacks"""
         filters = {}
         
-        # Handle taxonomic filters
-        if kwargs.get('taxon_class'):
-            filters['class'] = kwargs['taxon_class']
-        if kwargs.get('taxon_order'):
-            filters['order'] = kwargs['taxon_order']
-        if kwargs.get('taxon_family'):
-            filters['family'] = kwargs['taxon_family']
-        
+        # CRITICAL: Use if/elif to prevent both names (RULE 4)
         if kwargs.get('scientific_name'):
             filters['scientific_name'] = kwargs['scientific_name']
         elif kwargs.get('common_name'):
             filters['common_name'] = kwargs['common_name']
-        
         if kwargs.get('state_province'):
             filters['state_province'] = kwargs['state_province']
-        
+        if kwargs.get('collection_name'):
+            filters['collection_name'] = kwargs['collection_name']
         if kwargs.get('year_range'):
             yr = kwargs['year_range']
             filters['year_range'] = f"[{yr['start_year']} TO {yr['end_year']}]"
         
-        if kwargs.get('collection_name'):
-            filters['collection_name'] = kwargs['collection_name']
-        
-        # Get occurrences with facets
         results = self.biocache_service.search_occurrences(
             filters=filters if filters else None,
             page=0,
-            page_size=1,  # Just need facets, not full results
-            show_only_with_images=False
+            page_size=0
         )
         
-        # Build statistics response
-        stats = {
+        statistics = {
             "total_records": results['totalRecords'],
-            "distributions": {},
-            "ala_url": results.get('ala_url')
+            "faceted_counts": {}
         }
         
-        # Process facets
-        include_facets = kwargs.get('include_facets', ['year', 'state_province', 'family'])
+        requested_facets = kwargs.get('include_facets', [])
+        all_facets = results.get('facets', {})
         
-        if results.get('facets'):
-            for facet_name in include_facets:
-                if facet_name in results['facets']:
-                    stats['distributions'][facet_name] = results['facets'][facet_name][:20]  # Top 20
+        if requested_facets:
+            facet_mapping = {
+                'year': 'year',
+                'state_province': 'state_province',
+                'collection_name': 'collection_name',
+                'family': 'family',
+                'order': 'order',
+                'class': 'class',
+                'genus': 'genus',
+                #'basis_of_record': 'basis_of_record',
+                'institution': 'institution'
+            }
+            
+            for facet_name in requested_facets:
+                mapped_name = facet_mapping.get(facet_name)
+                if mapped_name and mapped_name in all_facets:
+                    statistics['faceted_counts'][facet_name] = all_facets[mapped_name]
+        else:
+            statistics['faceted_counts'] = all_facets
         
-        return stats
+        return statistics
 
     def _get_specimen_by_id(self, specimen_id: str) -> Dict:
-        """Get detailed specimen information by ID"""
-        try:
-            result = self.biocache_service.get_occurrence_by_id(specimen_id)
-            
-            if result:
-                return {
-                    "found": True,
-                    "specimen": result
-                }
-            else:
-                return {
-                    "found": False,
-                    "message": f"No specimen found with ID: {specimen_id}"
-                }
-        except Exception as e:
-            return {
-                "found": False,
-                "error": str(e)
+        """Get specimen by ID - no fallbacks"""
+        results = self.biocache_service.search_occurrences(
+            filters={'catalog_number': specimen_id},
+            page=0,
+            page_size=1
+        )
+        
+        if results['totalRecords'] == 0:
+            raise ValueError(f"No specimen found with ID: {specimen_id}")
+        
+        occ = results['occurrences'][0]
+        
+        specimen = {
+            "scientific_name": occ.get('scientificName'),
+            "common_name": occ.get('commonName'),
+            "catalog_number": occ.get('catalogNumber'),
+            "uuid": occ.get('id'),
+            "collection": {
+                "name": occ.get('collectionName'),
+                "institution": occ.get('institutionName'),
+                "basis_of_record": occ.get('basisOfRecord')
+            },
+            "location": {
+                "state": occ.get('stateProvince'),
+                "locality": occ.get('locality'),
+                "latitude": occ.get('latitude'),
+                "longitude": occ.get('longitude'),
+                "coordinate_uncertainty_meters": occ.get('coordinateUncertaintyInMeters')
+            },
+            "temporal": {
+                "event_date": occ.get('eventDate'),
+                "year": occ.get('year'),
+                "month": occ.get('month'),
+                "day": occ.get('day')
+            },
+            "people": {
+                "recorded_by": occ.get('recordedBy'),
+                "identified_by": occ.get('identifiedBy')
+            },
+            "taxonomy": {
+                "kingdom": occ.get('kingdom'),
+                "phylum": occ.get('phylum'),
+                "class": occ.get('class'),
+                "order": occ.get('order'),
+                "family": occ.get('family'),
+                "genus": occ.get('genus'),
+                "species": occ.get('species')
+            },
+            "images": {
+                "thumbnail": occ.get('thumbnailUrl'),
+                "medium": occ.get('imageUrl'),
+                "large": occ.get('largeImageUrl'),
+                "all": occ.get('images', [])
             }
+        }
+        
+        return {"specimen": specimen, "found": True}
 
-    def process_message(self, message: str = None, session_id: str = "default", image_data: str = None) -> Dict:
-        """Process user message with comprehensive tool handling"""
+    def process_message(
+        self, 
+        message: str, 
+        session_id: str = "default",
+        image_data: Optional[str] = None
+    ) -> Dict:
+        """Process message - logs errors and provides helpful responses"""
         try:
             conversation = self.get_or_create_session(session_id)
             
-            # Build user message
+            user_message = {"role": "user", "content": []}
+            
+            if message:
+                user_message["content"].append({
+                    "type": "text",
+                    "text": message
+                })
+            
             if image_data:
-                # Image-based message
-                user_message = {
-                    "role": "user",
-                    "content": []
-                }
-                
-                if message:
-                    user_message["content"].append({
-                        "type": "text",
-                        "text": message
-                    })
-                
-                # Add image
-                if image_data.startswith('data:'):
-                    base64_data = image_data.split(',')[1] if ',' in image_data else image_data
-                else:
-                    base64_data = image_data
+                if image_data.startswith('data:image'):
+                    image_data = image_data.split(',')[1]
                 
                 user_message["content"].append({
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{base64_data}"
+                        "url": f"data:image/jpeg;base64,{image_data}",
+                        "detail": "high"
                     }
                 })
                 
@@ -1038,14 +931,12 @@ You: Call search_specimens with common_name="bird" and locality="Beaumont Hills"
                         "type": "text",
                         "text": "Identify the animal species in this image. Provide scientific name, common name, taxonomic classification, and key identifying features."
                     })
-            else:
-                # Text-only message
-                user_message = {
-                    "role": "user",
-                    "content": message
-                }
             
             conversation.append(user_message)
+            
+            #if len(conversation) > self.max_history_length:
+                #conversation = [conversation[0]] + conversation[-(self.max_history_length-1):]
+                #self.conversations[session_id] = conversation
             
             conversation = self._trim_conversation_history(conversation)
             self.conversations[session_id] = conversation

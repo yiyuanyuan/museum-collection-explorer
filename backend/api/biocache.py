@@ -22,9 +22,6 @@ class BiocacheService:
         Enhanced search occurrences with support for comprehensive filtering
         Uses EXACTLY what the user asks for - no fallback logic here
         Fallback logic is handled by ChatbotService
-        
-        NEW: Supports explicit taxonomic filters (class, order, family, phylum)
-        NEW: Supports vernacular_filter for wildcard search within taxonomic results
         """
         # DEBUG: Log ALL parameters received
         print(f"[BiocacheService] search_occurrences called with:")
@@ -47,35 +44,8 @@ class BiocacheService:
         
         # Add user filters
         if filters:
-            # NEW: Handle explicit taxonomic rank filters (class, order, family, phylum)
-            # These take precedence over scientific_name for generic searches
-            if filters.get('class'):
-                fq.append(f'class:"{filters["class"]}"')
-                print(f"[BiocacheService] Using class field for: {filters['class']}")
-            
-            if filters.get('order'):
-                fq.append(f'order:"{filters["order"]}"')
-                print(f"[BiocacheService] Using order field for: {filters['order']}")
-            
-            if filters.get('family'):
-                fq.append(f'family:"{filters["family"]}"')
-                print(f"[BiocacheService] Using family field for: {filters['family']}")
-            
-            if filters.get('phylum'):
-                fq.append(f'phylum:"{filters["phylum"]}"')
-                print(f"[BiocacheService] Using phylum field for: {filters['phylum']}")
-            
-            # NEW: Handle vernacular filter (wildcard search for filtering within taxonomic results)
-            # e.g., search for "snake" within class Reptilia
-            if filters.get('vernacular_filter'):
-                vernacular_term = filters['vernacular_filter']
-                # Use wildcard search to match partial common names
-                fq.append(f'vernacularName:*{vernacular_term}*')
-                print(f"[BiocacheService] Using vernacularName WILDCARD filter for: *{vernacular_term}*")
-            
             # RULE 2: Scientific name - determine the taxonomic rank and use appropriate field
-            # Only use if no explicit class/order/family filters are set
-            if filters.get('scientific_name') and not any(filters.get(k) for k in ['class', 'order', 'family', 'phylum']):
+            if filters.get('scientific_name'):
                 scientific_name = filters['scientific_name']
                 
                 # CRITICAL: Clean and normalize the name
@@ -116,15 +86,12 @@ class BiocacheService:
                     fq.append(f'(order:"{scientific_name}" OR class:"{scientific_name}" OR phylum:"{scientific_name}" OR kingdom:"{scientific_name}")')
                     print(f"[BiocacheService] Using higher taxonomy search for: {scientific_name}")
             
-            # RULE 1: Common name search - use vernacularName field with WILDCARD
-            # Only use if no explicit class/order/family/vernacular_filter are set
+            # RULE 1: Common name search - use vernacularName field ONLY
             # RULE 4: Changed from 'if' to 'elif' to prevent both names being used simultaneously
-            elif filters.get('common_name') and not filters.get('vernacular_filter'):
+            elif filters.get('common_name'):
                 common_name = filters['common_name']
-                # Use WILDCARD for common name searches to catch variations
-                # e.g., "Red-naped Snake", "Red-naped snake", "Eastern Red-naped Snake"
-                fq.append(f'vernacularName:*{common_name}*')
-                print(f"[BiocacheService] Using vernacularName WILDCARD for: *{common_name}*")
+                fq.append(f'vernacularName:"{common_name}"')
+                print(f"[BiocacheService] Using vernacularName field for: {common_name}")
             
             # Geographic filters
             if filters.get('state_province'):
@@ -160,6 +127,9 @@ class BiocacheService:
             if filters.get('collection_name'):
                 fq.append(f'collectionName:"{filters["collection_name"]}"')
             
+            #if filters.get('basis_of_record'):
+                #fq.append(f'basisOfRecord:"{filters["basis_of_record"]}"')
+            
             if filters.get('institution'):
                 fq.append(f'institutionName:"{filters["institution"]}"')
             
@@ -180,7 +150,7 @@ class BiocacheService:
             'fq': fq,
             'pageSize': page_size,
             'start': page * page_size,
-            'facets': 'collectionName,stateProvince,year,family,order,class,institutionName,genus',
+            'facets': 'collectionName,stateProvince,year,family,order,class,institutionName,genus',#basisOfRecord,
             'flimit': 1000,
             'sort': 'score',
             'dir': 'desc'
@@ -192,9 +162,9 @@ class BiocacheService:
             params['lon'] = lon
             if radius is not None:
                 params['radius'] = radius
-            print(f"[BiocacheService] ✓ Added spatial params: lat={lat}, lon={lon}, radius={radius}")
+            print(f"[BiocacheService] ✓ Added spatial params to API request: lat={lat}, lon={lon}, radius={radius}")
         else:
-            print(f"[BiocacheService] ⚠ No spatial params added")
+            print(f"[BiocacheService] ⚠ No spatial params added (lat={lat}, lon={lon}, radius={radius})")
         
         print(f"[BiocacheService] Query filters: {fq}")
         print(f"[BiocacheService] API params keys: {list(params.keys())}")
@@ -226,6 +196,12 @@ class BiocacheService:
             'facets': self._process_facets(data.get('facetResults', [])),
             'ala_url': ala_url
         }
+
+        # Only include ala_url if there are actual records
+        #if total_records > 0:
+            #result['ala_url'] = self.build_ala_url(filters, bounds)
+
+        #return result
     
     def determine_taxonomic_rank(self, name: str) -> str:
         """
@@ -327,68 +303,59 @@ class BiocacheService:
         
         return None
     
-    def get_occurrence_by_id(self, specimen_id: str) -> Optional[Dict]:
-        """Alias for get_specimen_by_id for compatibility"""
-        return self.get_specimen_by_id(specimen_id)
-    
     def build_ala_url(self, filters: Optional[Dict] = None, bounds: Optional[Dict] = None) -> str:
         """
         Build a user-friendly ALA URL for viewing results in the ALA website
         IMPORTANT: This URL must match the query logic in search_occurrences()
-        
-        NEW: Supports class, order, family, phylum, and vernacular_filter
         """
         base = f"https://biocache.ala.org.au/occurrences/search?q=*:*&fq=dataResourceUid:%22{self.dataset_id}%22"
         params = []
         
         if filters:
-            # NEW: Handle explicit taxonomic rank filters
-            if filters.get('class'):
-                encoded_class = quote(filters["class"], safe='')
-                params.append(f'fq=class:%22{encoded_class}%22')
-            
-            if filters.get('order'):
-                encoded_order = quote(filters["order"], safe='')
-                params.append(f'fq=order:%22{encoded_order}%22')
-            
-            if filters.get('family'):
-                encoded_family = quote(filters["family"], safe='')
-                params.append(f'fq=family:%22{encoded_family}%22')
-            
-            if filters.get('phylum'):
-                encoded_phylum = quote(filters["phylum"], safe='')
-                params.append(f'fq=phylum:%22{encoded_phylum}%22')
-            
-            # NEW: Handle vernacular filter (wildcard)
-            if filters.get('vernacular_filter'):
-                vernacular_term = filters['vernacular_filter']
-                encoded_term = quote(vernacular_term, safe='')
-                params.append(f'fq=vernacularName:*{encoded_term}*')
-            
             # Scientific name - RULE 2: use appropriate field based on rank
-            # Only if no explicit class/order/family filters
-            if filters.get('scientific_name') and not any(filters.get(k) for k in ['class', 'order', 'family', 'phylum']):
+            if filters.get('scientific_name'):
                 name = filters['scientific_name']
+                
+                # Write to debug log file in current directory (works on all OS)
+                import os
+                log_path = os.path.join(os.getcwd(), 'biocache_debug.log')
+                with open(log_path, 'a') as f:
+                    f.write(f"\n=== build_ala_url DEBUG ===\n")
+                    f.write(f"Input name: '{name}'\n")
                 
                 # CRITICAL: Clean the name and ensure proper handling
                 name = name.strip()
                 name = ' '.join(name.split())  # normalize whitespace
                 
                 # Remove subgenus/author info in parentheses
+                # e.g., "Rhipidura (Rhipidura) fuliginosa" -> "Rhipidura fuliginosa"
                 import re
                 name = re.sub(r'\([^)]*\)', '', name).strip()
                 name = ' '.join(name.split())
+                
+                with open(log_path, 'a') as f:
+                    f.write(f"After clean: '{name}'\n")
+                    f.write(f"Split parts: {name.split()}\n")
                 
                 # DEFENSIVE CHECK: If name has 2+ words with capital+lowercase pattern, FORCE it to be species
                 parts = name.split()
                 if len(parts) >= 2 and len(parts[0]) > 0 and len(parts[1]) > 0:
                     if parts[0][0].isupper() and parts[1][0].islower():
                         rank = 'species'
+                        with open(log_path, 'a') as f:
+                            f.write(f"FORCED to species rank (defensive check passed)\n")
                         print(f"[BiocacheService] build_ala_url: FORCED to species rank for binomial: {name}")
                     else:
                         rank = self.determine_taxonomic_rank(name)
+                        with open(log_path, 'a') as f:
+                            f.write(f"Using determine_taxonomic_rank, got: {rank}\n")
                 else:
                     rank = self.determine_taxonomic_rank(name)
+                    with open(log_path, 'a') as f:
+                        f.write(f"Less than 2 parts, using determine_taxonomic_rank: {rank}\n")
+                
+                with open(log_path, 'a') as f:
+                    f.write(f"Final rank: {rank}\n")
                 
                 print(f"[BiocacheService] build_ala_url: scientific_name='{name}', taxonomic rank = {rank}")
                 sys.stdout.flush()
@@ -396,6 +363,8 @@ class BiocacheService:
                 if rank == 'species':
                     encoded_name = quote(name, safe='')
                     url_param = f'fq=species:%22{encoded_name}%22'
+                    with open(log_path, 'a') as f:
+                        f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using species: for {name}")
                     params.append(url_param)
                 elif rank == 'genus':
@@ -403,30 +372,35 @@ class BiocacheService:
                     genus_name = name.split()[0] if ' ' in name else name
                     encoded_genus = quote(genus_name, safe='')
                     url_param = f'fq=genus:%22{encoded_genus}%22'
+                    with open(log_path, 'a') as f:
+                        f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using genus: for {genus_name}")
                     params.append(url_param)
                 elif rank == 'family':
                     encoded_name = quote(name, safe='')
                     url_param = f'fq=family:%22{encoded_name}%22'
+                    with open(log_path, 'a') as f:
+                        f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using family: for {name}")
                     params.append(url_param)
                 else:
                     # Higher taxonomy - just use the name in a general field
                     encoded_name = quote(name, safe='')
                     url_param = f'fq=order:%22{encoded_name}%22'
+                    with open(log_path, 'a') as f:
+                        f.write(f"Building URL param: {url_param}\n")
                     print(f"[BiocacheService] build_ala_url: Using order/class/phylum for {name}")
                     params.append(url_param)
             
-            # Common name - RULE 1: use vernacularName field with WILDCARD
-            # Only if no explicit class/order/family/vernacular_filter filters
-            elif filters.get('common_name') and not filters.get('vernacular_filter'):
-                common_name = filters["common_name"]
-                encoded_common = quote(common_name, safe='')
-                # Use wildcard for URL too
-                params.append(f'fq=vernacularName:*{encoded_common}*')
+            # Common name - RULE 1: use vernacularName field
+            # RULE 4: Changed from 'if' to 'elif'
+            elif filters.get('common_name'):
+                encoded_common = quote(filters["common_name"], safe='')
+                params.append(f'fq=vernacularName:%22{encoded_common}%22')
             
             # Geographic
             if filters.get('state_province'):
+                # URL-encode the value to handle spaces and special characters
                 encoded_state = quote(filters["state_province"], safe='')
                 params.append(f'fq=stateProvince:%22{encoded_state}%22')
             
@@ -439,6 +413,7 @@ class BiocacheService:
                 params.append(f'fq=year:%22{filters["year"]}%22')
             
             if filters.get('year_range'):
+                # Year ranges don't use quotes, just brackets
                 year_range = filters['year_range'].replace(' ', '%20')
                 params.append(f'fq=year:{year_range}')
             
@@ -467,6 +442,9 @@ class BiocacheService:
                 encoded_institution = quote(filters["institution"], safe='')
                 params.append(f'fq=institutionName:%22{encoded_institution}%22')
             
+            #if filters.get('basis_of_record'):
+                #params.append(f'fq=basisOfRecord:%22{filters["basis_of_record"]}%22')
+            
             # Images
             if filters.get('has_image'):
                 params.append('fq=multimedia:Image')
@@ -476,7 +454,7 @@ class BiocacheService:
             params.append(f'fq=decimalLatitude:[{bounds["south"]}%20TO%20{bounds["north"]}]')
             params.append(f'fq=decimalLongitude:[{bounds["west"]}%20TO%20{bounds["east"]}]')
         
-        return base + "&" + "&".join(params) if params else base
+        return base + "&" + "&".join(params)
     
     def _is_species_name(self, name: str) -> bool:
         """
@@ -539,7 +517,7 @@ class BiocacheService:
             if not hasattr(self, '_debug_count'):
                 self._debug_count = 0
             if self._debug_count < 3:
-                print(f"[BiocacheService] Specimen {occurrence.get('id')}: has_image={occurrence.get('images', [])}")
+                print(f"[BiocacheService] Specimen {occurrence.get('id')}: has_image={has_image}, show_only_with_images={show_only_with_images}")
                 self._debug_count += 1
             
             if not has_image:
@@ -547,7 +525,7 @@ class BiocacheService:
         else:
             # DEBUG: Log that we're NOT filtering by images
             if not hasattr(self, '_debug_no_filter_logged'):
-                print(f"[BiocacheService] NOT filtering by images")
+                print(f"[BiocacheService] NOT filtering by images (show_only_with_images={show_only_with_images})")
                 self._debug_no_filter_logged = True
         
         return True
@@ -562,6 +540,7 @@ class BiocacheService:
             'commonName': occ.get('vernacularName', ''),
             'catalogNumber': occ.get('raw_catalogNumber', occ.get('catalogNumber')),
             'collectionName': occ.get('collectionName'),
+            #'basisOfRecord': occ.get('basisOfRecord'),
             'eventDate': occ.get('eventDate'),
             'locality': occ.get('locality'),
             'stateProvince': occ.get('stateProvince'),
@@ -601,6 +580,7 @@ class BiocacheService:
             'family': 'family',
             'order': 'order',
             'class': 'class',
+            #'basisOfRecord': 'basis_of_record',
             'institutionName': 'institution',
             'kingdom': 'kingdom',
             'phylum': 'phylum',
