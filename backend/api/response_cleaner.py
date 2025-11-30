@@ -17,7 +17,8 @@ class ResponseCleaner:
         1. Removing raw JSON
         2. Removing function call leakage
         3. Fixing malformed URLs
-        4. Ensuring natural language
+        4. Converting markdown images to "See image:" format
+        5. Ensuring natural language
         """
         original = message
         
@@ -31,7 +32,10 @@ class ResponseCleaner:
         if function_results:
             message = self._fix_urls(message, function_results)
         
-        # Step 4: Remove empty lines and clean up
+        # Step 4: Convert markdown image syntax to "See image:" format
+        message = self._convert_image_syntax(message)
+        
+        # Step 5: Remove empty lines and clean up
         message = self._cleanup_formatting(message)
         
         # If we removed too much, check what the original query might have been about
@@ -181,6 +185,14 @@ class ResponseCleaner:
         
         print(f"[ResponseCleaner] Output text preview: {text[:200]}...")
         return text
+    
+    def _convert_image_syntax(self, text: str) -> str:
+        """Convert markdown image syntax ![alt text](url) to 'See image: url' format"""
+        # Pattern matches ![any alt text](url)
+        # Captures the URL inside the parentheses
+        pattern = r'!\[[^\]]*\]\((https?://[^\)]+)\)'
+        replacement = r'See image: \1'
+        return re.sub(pattern, replacement, text)
     
     def _cleanup_formatting(self, text: str) -> str:
         """Clean up formatting issues"""
