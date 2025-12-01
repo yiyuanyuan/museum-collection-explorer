@@ -319,7 +319,7 @@ function App() {
               <div className="consent-link-row">
                 {/* TODO: Replace with your OneDrive URL */}
                 <a 
-                  href="https://studentutsedu-my.sharepoint.com/:b:/g/personal/yiyuan_wang_uts_edu_au/EWU_FHTquEFNjBjDneMbeBUBg6pDcTHM0YJWjHqmqnx4GQ?e=V6Weeg" 
+                  href="https://studentutsedu-my.sharepoint.com/:b:/g/personal/yiyuan_wang_uts_edu_au/EWU_FHTquEFNjBjDneMbeBUBg6pDcTHM0YJWjHqmqnx4GQ?e=EQLi6a" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="consent-document-link"
